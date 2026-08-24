@@ -24,7 +24,7 @@ jobs:
         run: flutter create --platforms=ios --org com.inspector --project-name inspector .
 
       - name: Generar el ícono de la app
-        run: dart run flutter_launcher_icons -f flutter_launcher_icons-ios.yaml
+        run: dart run flutter_launcher_icons -f icons_config_ios.yaml
 
       - name: Compilar la app de iOS (sin firmar)
         run: flutter build ios --release --no-codesign
