@@ -1,0 +1,17 @@
+[Unit]
+Description=Servicio de verificacion de correo - Inspector
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/inspector-verificacion
+EnvironmentFile=/opt/inspector-verificacion/.env
+ExecStart=/usr/bin/node /opt/inspector-verificacion/server.js
+Restart=always
+RestartSec=5
+User=inspector
+Group=inspector
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

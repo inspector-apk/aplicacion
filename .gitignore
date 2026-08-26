@@ -19,3 +19,7 @@ web/
 build/*
 !build/Inspector.apk
 
+# Backend de verificación de correo
+backend/node_modules/
+backend/.env
+

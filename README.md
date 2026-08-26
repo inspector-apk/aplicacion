@@ -5,14 +5,17 @@ almacenamiento 100% local en **SQLite** (paquete `sqflite`): alias,
 roles, contraseñas (hasheadas con SHA-256 + salt) y solicitudes viven
 únicamente en la base de datos local del dispositivo.
 
-Hay dos funciones que sí requieren internet **en el dispositivo del
-usuario**, ninguna necesita un servidor propio:
+Hay dos funciones que sí requieren internet, cada una documentada por
+separado:
 - Cargar los mosaicos visuales del mapa de Bogotá (ver "Solicitudes y
   mapa" más abajo); sin conexión el mapa se ve en blanco pero el resto
   de la app sigue funcionando.
 - **Verificar el correo durante el registro** (ver "Verificación de
-  correo" más abajo): la propia app se conecta por SMTP a Gmail y envía
-  el código directamente, sin backend intermedio.
+  correo" más abajo): requiere el pequeño backend propio en `backend/`,
+  desplegado en tu servidor, que envía el código por Gmail/Outlook SMTP.
+  Sin ese backend desplegado y configurado, el registro no podrá enviar
+  el código y quedará bloqueado en ese paso — es la única función de la
+  app que depende de un servidor.
 
 El APK de Android ya viene compilado en este repositorio (ver más abajo).
 El paquete de iOS (IPA) no se puede generar desde este entorno Windows —
@@ -157,32 +160,25 @@ instales la app.
 ## Verificación de correo
 
 El registro exige verificar el correo con un código de 6 dígitos antes
-de crear la cuenta. **No hay backend ni servidor propio**: la app se
-conecta directamente por SMTP a una cuenta de Gmail y envía el correo
-desde el propio dispositivo del usuario (paquete `mailer`).
+de crear la cuenta. A diferencia del resto de la app, **esto sí requiere
+un backend propio y conexión a internet** — no hay forma de enviar un
+correo real sin un servicio externo.
 
-- `lib/services/email_verification_service.dart` genera el código,
-  arma el correo y lo envía vía `gmail(usuario, contraseña)` de
-  `package:mailer`; los códigos pendientes viven en memoria (10 minutos
-  de validez, 30 segundos de espera entre reenvíos) y se pierden si la
-  app se cierra a mitad del registro — el usuario simplemente vuelve a
-  pedir el código.
-- `lib/core/smtp_config.dart` tiene el correo y la contraseña de
-  aplicación de Gmail que envían los códigos — **hay que editarlo con
-  los valores reales** (por defecto trae valores de relleno) y volver a
-  compilar el APK/IPA.
-- ⚠️ **Importante sobre seguridad**: esa contraseña de aplicación queda
-  dentro del APK/IPA compilado y es extraíble por cualquiera que lo
-  decompile. Usa una cuenta de Gmail **dedicada solo para esto**, nunca
-  una cuenta personal o crítica — si alguien la extrae, en el peor caso
-  podría enviar correos desde esa cuenta desechable, nada más.
-- Cómo generar la contraseña de aplicación: activa verificación en 2
-  pasos en esa cuenta de Gmail y genera una en
-  https://myaccount.google.com/apppasswords
-- Sin conexión a internet en el celular del usuario, el paso de
-  "Verificar correo" del registro fallará — es la única función de
-  Inspector que necesita internet en el dispositivo (el resto, incluido
-  el login, funciona 100% local incluso sin conexión).
+- El backend (carpeta `backend/`, Node.js + Express + Nodemailer) envía
+  el código por SMTP de Gmail/Outlook y lo verifica; no guarda nada en
+  una base de datos ni conoce a los usuarios de la app, solo el correo
+  que está verificando. Tiene su propia guía de despliegue en
+  `backend/README.md`, incluyendo cómo dejarlo corriendo permanentemente
+  en tu servidor con `systemd`.
+- `lib/services/email_verification_service.dart` es el lado de la app
+  que llama a ese backend (`enviar-codigo` / `verificar-codigo`).
+- `lib/core/backend_config.dart` tiene la URL y la API key del backend —
+  **hay que editarlo con los valores reales después de desplegarlo** (por
+  defecto trae valores de relleno) y volver a compilar el APK.
+- Sin el backend desplegado y configurado, el paso de "Verificar correo"
+  del registro fallará con un error de conexión — es la única función de
+  Inspector que puede quedar bloqueada sin servidor. El resto de la app
+  (login, mapa, solicitudes, 2FA, perfil) sigue funcionando igual.
 
 ## Requisitos para compilar
 
