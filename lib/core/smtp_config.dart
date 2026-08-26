@@ -11,7 +11,6 @@
 class SmtpConfig {
   SmtpConfig._();
 
-  static const String gmailUser = 'CAMBIA-ESTO-POR-TU-CORREO@gmail.com';
-  static const String gmailAppPassword =
-      'CAMBIA-ESTO-POR-TU-CONTRASENA-DE-APLICACION';
+  static const String gmailUser = 'desarrollador.inspector@servialco.com';
+  static const String gmailAppPassword = 'cmhtzkudzzfbtkru';
 }
