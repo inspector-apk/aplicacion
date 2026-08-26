@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../core/app_colors.dart';
@@ -29,41 +31,84 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   List<Solicitud> _enCurso = [];
   bool _cargandoInicial = true;
   int? _procesandoId;
+  Timer? _actualizacionPeriodica;
 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
+    // Sin websockets, refrescamos cada pocos segundos: es lo que hace
+    // que una solicitud "desaparezca" para los demás colaboradores en
+    // cuanto alguien más la acepta primero.
+    _actualizacionPeriodica =
+        Timer.periodic(const Duration(seconds: 6), (_) => _cargarDatos());
+  }
+
+  @override
+  void dispose() {
+    _actualizacionPeriodica?.cancel();
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
-    final pendientes = await SolicitudService.solicitudesPendientes();
-    final enCurso = await SolicitudService.solicitudesEnCursoDeColaborador(
-      widget.usuario.id!,
-    );
-    if (!mounted) return;
-    setState(() {
-      _pendientes = pendientes;
-      _enCurso = enCurso;
-      _cargandoInicial = false;
-    });
+    try {
+      final pendientes = await SolicitudService.solicitudesPendientes();
+      final enCurso = await SolicitudService.solicitudesEnCursoDeColaborador(
+        widget.usuario.alias,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pendientes = pendientes;
+        _enCurso = enCurso;
+        _cargandoInicial = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cargandoInicial = false);
+    }
   }
 
   Future<void> _aceptar(Solicitud solicitud) async {
     setState(() => _procesandoId = solicitud.id);
-    await SolicitudService.aceptarSolicitud(
-      solicitudId: solicitud.id!,
-      colaboradorId: widget.usuario.id!,
-    );
-    await _cargarDatos();
-    if (mounted) setState(() => _procesandoId = null);
+    try {
+      await SolicitudService.aceptarSolicitud(
+        solicitudId: solicitud.id!,
+        colaboradorAlias: widget.usuario.alias,
+      );
+      await _cargarDatos();
+    } on SolicitudException catch (e) {
+      _mostrarMensaje(e.mensaje);
+      await _cargarDatos();
+    } catch (_) {
+      _mostrarMensaje(
+          'No se pudo conectar con el servidor. Revisa tu conexión.');
+    } finally {
+      if (mounted) setState(() => _procesandoId = null);
+    }
   }
 
   Future<void> _completar(Solicitud solicitud) async {
     setState(() => _procesandoId = solicitud.id);
-    await SolicitudService.completarSolicitud(solicitud.id!);
-    await _cargarDatos();
-    if (mounted) setState(() => _procesandoId = null);
+    try {
+      await SolicitudService.completarSolicitud(
+        solicitudId: solicitud.id!,
+        colaboradorAlias: widget.usuario.alias,
+      );
+      await _cargarDatos();
+    } on SolicitudException catch (e) {
+      _mostrarMensaje(e.mensaje);
+    } catch (_) {
+      _mostrarMensaje(
+          'No se pudo conectar con el servidor. Revisa tu conexión.');
+    } finally {
+      if (mounted) setState(() => _procesandoId = null);
+    }
+  }
+
+  void _mostrarMensaje(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   void _abrirPerfil() {

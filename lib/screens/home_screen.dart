@@ -48,13 +48,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarSolicitudActiva() async {
     setState(() => _cargandoSolicitud = true);
-    final activa =
-        await SolicitudService.solicitudActivaDeCliente(_usuario.id!);
-    if (!mounted) return;
-    setState(() {
-      _solicitudActiva = activa;
-      _cargandoSolicitud = false;
-    });
+    try {
+      final activa =
+          await SolicitudService.solicitudActivaDeCliente(_usuario.alias);
+      if (!mounted) return;
+      setState(() => _solicitudActiva = activa);
+    } catch (_) {
+      // Sin conexión al backend: se muestra sin solicitud activa.
+    } finally {
+      if (mounted) setState(() => _cargandoSolicitud = false);
+    }
   }
 
   String get _rolLabel {

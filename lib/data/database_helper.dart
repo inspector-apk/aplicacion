@@ -1,19 +1,21 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../models/solicitud.dart';
 import '../models/usuario.dart';
 
 /// Acceso centralizado a la base de datos local SQLite.
 /// Toda la información del usuario permanece únicamente en el dispositivo.
+/// Las solicitudes ya NO viven aquí: viven en el backend compartido (ver
+/// `backend/` y `lib/services/solicitud_service.dart`), porque una
+/// solicitud creada por un Cliente tiene que poder verla un Colaborador
+/// en otro dispositivo distinto.
 class DatabaseHelper {
   DatabaseHelper._internal();
   static final DatabaseHelper instance = DatabaseHelper._internal();
 
   static const String _dbName = 'inspector.db';
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 5;
   static const String tableUsuarios = 'usuarios';
-  static const String tableSolicitudes = 'solicitudes';
 
   Database? _db;
 
@@ -49,12 +51,8 @@ class DatabaseHelper {
             localidad_trabajo TEXT
           )
         ''');
-        await db.execute(_createSolicitudesSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute(_createSolicitudesSql);
-        }
         if (oldVersion < 3) {
           await db.execute(
               'ALTER TABLE $tableUsuarios ADD COLUMN totp_secret TEXT');
@@ -67,27 +65,13 @@ class DatabaseHelper {
           await db.execute(
               'ALTER TABLE $tableUsuarios ADD COLUMN localidad_trabajo TEXT');
         }
+        if (oldVersion < 5) {
+          // Las solicitudes se mudaron al backend compartido.
+          await db.execute('DROP TABLE IF EXISTS solicitudes');
+        }
       },
     );
   }
-
-  static const String _createSolicitudesSql = '''
-    CREATE TABLE $tableSolicitudes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      cliente_id INTEGER NOT NULL,
-      colaborador_id INTEGER,
-      tipo TEXT NOT NULL,
-      descripcion TEXT NOT NULL,
-      localidad TEXT NOT NULL,
-      latitud REAL NOT NULL,
-      longitud REAL NOT NULL,
-      estado TEXT NOT NULL,
-      fecha_creacion TEXT NOT NULL,
-      fecha_actualizacion TEXT NOT NULL,
-      FOREIGN KEY (cliente_id) REFERENCES $tableUsuarios (id),
-      FOREIGN KEY (colaborador_id) REFERENCES $tableUsuarios (id)
-    )
-  ''';
 
   Future<int> insertUsuario(Usuario usuario) async {
     final db = await database;
@@ -222,85 +206,5 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
-  }
-
-  Future<int> insertSolicitud(Solicitud solicitud) async {
-    final db = await database;
-    return db.insert(
-      tableSolicitudes,
-      solicitud.toMap()..remove('id'),
-    );
-  }
-
-  /// Elimina una solicitud por completo, usado desde el panel de admin.
-  Future<void> eliminarSolicitud(int id) async {
-    final db = await database;
-    await db.delete(tableSolicitudes, where: 'id = ?', whereArgs: [id]);
-  }
-
-  /// Solicitud activa (pendiente o aceptada) de un cliente, si tiene una.
-  Future<Solicitud?> getSolicitudActivaCliente(int clienteId) async {
-    final db = await database;
-    final rows = await db.query(
-      tableSolicitudes,
-      where: 'cliente_id = ? AND estado IN (?, ?)',
-      whereArgs: [
-        clienteId,
-        EstadoSolicitud.pendiente.valor,
-        EstadoSolicitud.aceptada.valor,
-      ],
-      orderBy: 'fecha_creacion DESC',
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return Solicitud.fromMap(rows.first);
-  }
-
-  /// Todas las solicitudes, para el panel de administrador.
-  Future<List<Solicitud>> getTodasLasSolicitudes() async {
-    final db = await database;
-    final rows =
-        await db.query(tableSolicitudes, orderBy: 'fecha_creacion DESC');
-    return rows.map(Solicitud.fromMap).toList();
-  }
-
-  Future<List<Solicitud>> getSolicitudesPendientes() async {
-    final db = await database;
-    final rows = await db.query(
-      tableSolicitudes,
-      where: 'estado = ?',
-      whereArgs: [EstadoSolicitud.pendiente.valor],
-      orderBy: 'fecha_creacion DESC',
-    );
-    return rows.map(Solicitud.fromMap).toList();
-  }
-
-  Future<List<Solicitud>> getSolicitudesAceptadasPorColaborador(
-    int colaboradorId,
-  ) async {
-    final db = await database;
-    final rows = await db.query(
-      tableSolicitudes,
-      where: 'colaborador_id = ? AND estado = ?',
-      whereArgs: [colaboradorId, EstadoSolicitud.aceptada.valor],
-      orderBy: 'fecha_creacion DESC',
-    );
-    return rows.map(Solicitud.fromMap).toList();
-  }
-
-  Future<void> actualizarEstadoSolicitud(
-    int id, {
-    required EstadoSolicitud estado,
-    int? colaboradorId,
-  }) async {
-    final db = await database;
-    final valores = <String, Object?>{
-      'estado': estado.valor,
-      'fecha_actualizacion': DateTime.now().toIso8601String(),
-    };
-    if (colaboradorId != null) {
-      valores['colaborador_id'] = colaboradorId;
-    }
-    await db.update(tableSolicitudes, valores, where: 'id = ?', whereArgs: [id]);
   }
 }

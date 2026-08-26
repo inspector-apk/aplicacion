@@ -32,7 +32,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
     final usuarios = await AdminService.todosLosUsuarios();
-    final solicitudes = await AdminService.todasLasSolicitudes();
+    List<Solicitud> solicitudes = [];
+    try {
+      solicitudes = await AdminService.todasLasSolicitudes();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'No se pudieron cargar las solicitudes (sin conexión al backend)'),
+        ));
+      }
+    }
     if (!mounted) return;
     setState(() {
       _usuarios = usuarios;
@@ -101,8 +111,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final aliasPorId = {for (final u in _usuarios) u.id: u.alias};
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -141,7 +149,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                   _ListaSolicitudes(
                     solicitudes: _solicitudes,
-                    aliasPorId: aliasPorId,
                     onEliminar: _eliminarSolicitud,
                   ),
                 ],
@@ -246,11 +253,9 @@ class _ListaUsuarios extends StatelessWidget {
 
 class _ListaSolicitudes extends StatelessWidget {
   final List<Solicitud> solicitudes;
-  final Map<int?, String> aliasPorId;
   final ValueChanged<Solicitud> onEliminar;
   const _ListaSolicitudes({
     required this.solicitudes,
-    required this.aliasPorId,
     required this.onEliminar,
   });
 
@@ -308,8 +313,8 @@ class _ListaSolicitudes extends StatelessWidget {
                       color: AppColors.textSecondary, fontSize: 12.5)),
               const SizedBox(height: 6),
               Text(
-                'Cliente: ${aliasPorId[s.clienteId] ?? s.clienteId}'
-                '${s.colaboradorId != null ? ' · Colaborador: ${aliasPorId[s.colaboradorId] ?? s.colaboradorId}' : ''}',
+                'Cliente: ${s.clienteAlias}'
+                '${s.colaboradorAlias != null ? ' · Colaborador: ${s.colaboradorAlias}' : ''}',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
             ],

@@ -32,10 +32,16 @@ extension EstadoSolicitudX on EstadoSolicitud {
   }
 }
 
+/// Una solicitud vive en el backend compartido (no en SQLite local),
+/// porque tiene que poder verla un Colaborador en un dispositivo
+/// distinto al del Cliente que la creó. Por eso se identifica a las
+/// personas por su `alias` (único, generado al registrarse) en vez de
+/// un id local de base de datos, que no tendría sentido fuera del
+/// dispositivo donde se creó.
 class Solicitud {
   final int? id;
-  final int clienteId;
-  final int? colaboradorId;
+  final String clienteAlias;
+  final String? colaboradorAlias;
   final TipoSolicitud tipo;
   final String descripcion;
   final String localidad;
@@ -47,8 +53,8 @@ class Solicitud {
 
   const Solicitud({
     this.id,
-    required this.clienteId,
-    this.colaboradorId,
+    required this.clienteAlias,
+    this.colaboradorAlias,
     required this.tipo,
     required this.descripcion,
     required this.localidad,
@@ -59,56 +65,30 @@ class Solicitud {
     required this.fechaActualizacion,
   });
 
-  Solicitud copyWith({
-    int? id,
-    int? colaboradorId,
-    EstadoSolicitud? estado,
-    String? fechaActualizacion,
-  }) {
-    return Solicitud(
-      id: id ?? this.id,
-      clienteId: clienteId,
-      colaboradorId: colaboradorId ?? this.colaboradorId,
-      tipo: tipo,
-      descripcion: descripcion,
-      localidad: localidad,
-      latitud: latitud,
-      longitud: longitud,
-      estado: estado ?? this.estado,
-      fechaCreacion: fechaCreacion,
-      fechaActualizacion: fechaActualizacion ?? this.fechaActualizacion,
-    );
-  }
-
-  Map<String, Object?> toMap() {
+  Map<String, Object?> toJson() {
     return {
-      'id': id,
-      'cliente_id': clienteId,
-      'colaborador_id': colaboradorId,
+      'clienteAlias': clienteAlias,
       'tipo': tipo.valor,
       'descripcion': descripcion,
       'localidad': localidad,
       'latitud': latitud,
       'longitud': longitud,
-      'estado': estado.valor,
-      'fecha_creacion': fechaCreacion,
-      'fecha_actualizacion': fechaActualizacion,
     };
   }
 
-  factory Solicitud.fromMap(Map<String, Object?> map) {
+  factory Solicitud.fromJson(Map<String, dynamic> json) {
     return Solicitud(
-      id: map['id'] as int?,
-      clienteId: map['cliente_id'] as int,
-      colaboradorId: map['colaborador_id'] as int?,
-      tipo: TipoSolicitudX.fromValor(map['tipo'] as String),
-      descripcion: map['descripcion'] as String,
-      localidad: map['localidad'] as String,
-      latitud: (map['latitud'] as num).toDouble(),
-      longitud: (map['longitud'] as num).toDouble(),
-      estado: EstadoSolicitudX.fromValor(map['estado'] as String),
-      fechaCreacion: map['fecha_creacion'] as String,
-      fechaActualizacion: map['fecha_actualizacion'] as String,
+      id: json['id'] as int?,
+      clienteAlias: json['cliente_alias'] as String,
+      colaboradorAlias: json['colaborador_alias'] as String?,
+      tipo: TipoSolicitudX.fromValor(json['tipo'] as String),
+      descripcion: json['descripcion'] as String,
+      localidad: json['localidad'] as String,
+      latitud: (json['latitud'] as num).toDouble(),
+      longitud: (json['longitud'] as num).toDouble(),
+      estado: EstadoSolicitudX.fromValor(json['estado'] as String),
+      fechaCreacion: json['fecha_creacion'] as String,
+      fechaActualizacion: json['fecha_actualizacion'] as String,
     );
   }
 }

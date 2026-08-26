@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../core/app_colors.dart';
@@ -34,27 +36,38 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   TipoSolicitud _tipo = TipoSolicitud.texto;
   String? _localidad;
   final _descripcionCtrl = TextEditingController();
+  Timer? _actualizacionPeriodica;
 
   @override
   void initState() {
     super.initState();
     _cargarSolicitudActiva();
+    // Sin websockets, refrescamos cada pocos segundos para simular
+    // tiempo real (ej. cuando un colaborador acepta la solicitud).
+    _actualizacionPeriodica =
+        Timer.periodic(const Duration(seconds: 6), (_) => _cargarSolicitudActiva());
   }
 
   @override
   void dispose() {
     _descripcionCtrl.dispose();
+    _actualizacionPeriodica?.cancel();
     super.dispose();
   }
 
   Future<void> _cargarSolicitudActiva() async {
-    final activa =
-        await SolicitudService.solicitudActivaDeCliente(widget.usuario.id!);
-    if (!mounted) return;
-    setState(() {
-      _solicitudActiva = activa;
-      _cargandoInicial = false;
-    });
+    try {
+      final activa = await SolicitudService.solicitudActivaDeCliente(
+          widget.usuario.alias);
+      if (!mounted) return;
+      setState(() {
+        _solicitudActiva = activa;
+        _cargandoInicial = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cargandoInicial = false);
+    }
   }
 
   Future<void> _enviarSolicitud() async {
@@ -74,24 +87,43 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     }
 
     setState(() => _enviando = true);
-    await SolicitudService.crearSolicitud(
-      clienteId: widget.usuario.id!,
-      tipo: _tipo,
-      descripcion: _descripcionCtrl.text,
-      localidad: _localidad!,
-    );
-    _descripcionCtrl.clear();
-    await _cargarSolicitudActiva();
-    if (mounted) setState(() => _enviando = false);
+    try {
+      await SolicitudService.crearSolicitud(
+        clienteAlias: widget.usuario.alias,
+        tipo: _tipo,
+        descripcion: _descripcionCtrl.text,
+        localidad: _localidad!,
+      );
+      _descripcionCtrl.clear();
+      await _cargarSolicitudActiva();
+    } on SolicitudException catch (e) {
+      _mostrarMensaje(e.mensaje);
+    } catch (_) {
+      _mostrarMensaje(
+          'No se pudo conectar con el servidor. Revisa tu conexión.');
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   Future<void> _cancelarSolicitud() async {
     final id = _solicitudActiva?.id;
     if (id == null) return;
     setState(() => _enviando = true);
-    await SolicitudService.cancelarSolicitud(id);
-    await _cargarSolicitudActiva();
-    if (mounted) setState(() => _enviando = false);
+    try {
+      await SolicitudService.cancelarSolicitud(
+        solicitudId: id,
+        clienteAlias: widget.usuario.alias,
+      );
+      await _cargarSolicitudActiva();
+    } on SolicitudException catch (e) {
+      _mostrarMensaje(e.mensaje);
+    } catch (_) {
+      _mostrarMensaje(
+          'No se pudo conectar con el servidor. Revisa tu conexión.');
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   void _mostrarMensaje(String mensaje) {
