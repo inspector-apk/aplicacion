@@ -2,7 +2,7 @@ import '../data/database_helper.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
 
-/// Consultas de solo lectura para el panel de administrador: todos los
+/// Consultas y gestión para el panel de administrador: todos los
 /// usuarios y todas las solicitudes de la base de datos local.
 class AdminService {
   AdminService._();
@@ -15,5 +15,13 @@ class AdminService {
 
   static Future<List<Solicitud>> todasLasSolicitudes() {
     return _db.getTodasLasSolicitudes();
+  }
+
+  static Future<void> eliminarUsuario(int id) {
+    return _db.eliminarUsuario(id);
+  }
+
+  static Future<void> eliminarSolicitud(int id) {
+    return _db.eliminarSolicitud(id);
   }
 }

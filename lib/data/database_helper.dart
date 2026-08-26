@@ -232,6 +232,12 @@ class DatabaseHelper {
     );
   }
 
+  /// Elimina una solicitud por completo, usado desde el panel de admin.
+  Future<void> eliminarSolicitud(int id) async {
+    final db = await database;
+    await db.delete(tableSolicitudes, where: 'id = ?', whereArgs: [id]);
+  }
+
   /// Solicitud activa (pendiente o aceptada) de un cliente, si tiene una.
   Future<Solicitud?> getSolicitudActivaCliente(int clienteId) async {
     final db = await database;

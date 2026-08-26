@@ -7,9 +7,9 @@ import '../services/admin_service.dart';
 import '../services/session_service.dart';
 import 'splash_screen.dart';
 
-/// Panel de administrador: solo lectura por ahora. Muestra todos los
-/// usuarios registrados y todas las solicitudes creadas en la app,
-/// leídos directamente de la base de datos local.
+/// Panel de administrador: usuarios y solicitudes, con opción de
+/// eliminarlos. Todo se lee y se borra directamente de la base de datos
+/// local.
 class AdminPanelScreen extends StatefulWidget {
   final Usuario usuario;
   const AdminPanelScreen({super.key, required this.usuario});
@@ -49,6 +49,56 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
+  Future<bool> _confirmar(String titulo, String mensaje) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(titulo),
+        content: Text(mensaje),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child:
+                const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    return confirmar ?? false;
+  }
+
+  Future<void> _eliminarUsuario(Usuario u) async {
+    if (u.id == widget.usuario.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No puedes eliminar tu propia cuenta de admin')),
+      );
+      return;
+    }
+    final ok = await _confirmar(
+      'Eliminar usuario',
+      '¿Seguro que quieres eliminar a "${u.alias}"? Esto borra su cuenta '
+          'por completo y no se puede deshacer.',
+    );
+    if (!ok) return;
+    await AdminService.eliminarUsuario(u.id!);
+    await _cargarDatos();
+  }
+
+  Future<void> _eliminarSolicitud(Solicitud s) async {
+    final ok = await _confirmar(
+      'Eliminar solicitud',
+      '¿Seguro que quieres eliminar esta solicitud? No se puede deshacer.',
+    );
+    if (!ok) return;
+    await AdminService.eliminarSolicitud(s.id!);
+    await _cargarDatos();
+  }
+
   @override
   Widget build(BuildContext context) {
     final aliasPorId = {for (final u in _usuarios) u.id: u.alias};
@@ -85,10 +135,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 child: CircularProgressIndicator(color: AppColors.accent))
             : TabBarView(
                 children: [
-                  _ListaUsuarios(usuarios: _usuarios),
+                  _ListaUsuarios(
+                    usuarios: _usuarios,
+                    onEliminar: _eliminarUsuario,
+                  ),
                   _ListaSolicitudes(
                     solicitudes: _solicitudes,
                     aliasPorId: aliasPorId,
+                    onEliminar: _eliminarSolicitud,
                   ),
                 ],
               ),
@@ -99,7 +153,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
 class _ListaUsuarios extends StatelessWidget {
   final List<Usuario> usuarios;
-  const _ListaUsuarios({required this.usuarios});
+  final ValueChanged<Usuario> onEliminar;
+  const _ListaUsuarios({required this.usuarios, required this.onEliminar});
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +193,15 @@ class _ListaUsuarios extends StatelessWidget {
                     ),
                   ),
                   _Badge(texto: _rolLabel(u.rol)),
+                  IconButton(
+                    onPressed: () => onEliminar(u),
+                    icon: const Icon(Icons.delete_outline,
+                        color: AppColors.error, size: 20),
+                    tooltip: 'Eliminar usuario',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -183,7 +247,12 @@ class _ListaUsuarios extends StatelessWidget {
 class _ListaSolicitudes extends StatelessWidget {
   final List<Solicitud> solicitudes;
   final Map<int?, String> aliasPorId;
-  const _ListaSolicitudes({required this.solicitudes, required this.aliasPorId});
+  final ValueChanged<Solicitud> onEliminar;
+  const _ListaSolicitudes({
+    required this.solicitudes,
+    required this.aliasPorId,
+    required this.onEliminar,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +291,15 @@ class _ListaSolicitudes extends StatelessWidget {
                     ),
                   ),
                   _Badge(texto: s.estado.etiqueta),
+                  IconButton(
+                    onPressed: () => onEliminar(s),
+                    icon: const Icon(Icons.delete_outline,
+                        color: AppColors.error, size: 20),
+                    tooltip: 'Eliminar solicitud',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ],
               ),
               const SizedBox(height: 6),

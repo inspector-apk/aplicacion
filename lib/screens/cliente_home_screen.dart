@@ -5,6 +5,7 @@ import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
+import '../services/content_moderation_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/bogota_map.dart';
@@ -63,6 +64,12 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     }
     if (_descripcionCtrl.text.trim().isEmpty) {
       _mostrarMensaje('Describe lo que necesitas');
+      return;
+    }
+    if (ContentModerationService.contieneContenidoProhibido(
+        _descripcionCtrl.text)) {
+      _mostrarMensaje(
+          'Tu solicitud contiene contenido no permitido y no se puede enviar.');
       return;
     }
 
