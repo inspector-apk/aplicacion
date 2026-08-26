@@ -1,18 +1,23 @@
 # Inspector
 
-App móvil hecha en **Flutter** (Android + iOS desde el mismo código), con
-almacenamiento 100% local en **SQLite** (paquete `sqflite`): alias,
-roles, contraseñas (hasheadas con SHA-256 + salt) y solicitudes viven
-únicamente en la base de datos local del dispositivo.
+App móvil hecha en **Flutter** (Android + iOS desde el mismo código).
+Los usuarios (cuentas, alias, roles, contraseñas hasheadas con SHA-256 +
+salt, 2FA) viven 100% local en **SQLite** en cada dispositivo — nadie
+más los ve. Las **solicitudes** son la única excepción: viven en un
+backend compartido (ver `backend/`) porque una solicitud creada por un
+Cliente en su celular tiene que poder verla un Colaborador en un celular
+distinto — eso es imposible con almacenamiento solo local.
 
-Hay dos funciones que sí requieren internet **en el dispositivo del
-usuario**, ninguna necesita un servidor propio:
-- Cargar los mosaicos visuales del mapa de Bogotá (ver "Solicitudes y
-  mapa" más abajo); sin conexión el mapa se ve en blanco pero el resto
-  de la app sigue funcionando.
-- **Verificar el correo durante el registro** (ver "Verificación de
-  correo" más abajo): la propia app se conecta por SMTP a Gmail y envía
-  el código directamente, sin backend intermedio.
+Funciones que requieren internet:
+- Cargar los mosaicos visuales del mapa de Bogotá; sin conexión el mapa
+  se ve en blanco pero el resto de la app sigue funcionando.
+- **Verificar el correo durante el registro**: la propia app se conecta
+  por SMTP a Gmail y envía el código directamente, sin backend
+  intermedio (ver "Verificación de correo" más abajo).
+- **Crear, ver, aceptar, completar o cancelar solicitudes**: requiere el
+  backend compartido desplegado y alcanzable (ver "Solicitudes y mapa" y
+  `backend/README.md`). Sin él, el registro y el login funcionan igual,
+  pero Cliente y Colaborador no pueden intercambiar solicitudes.
 
 El APK de Android ya viene compilado en este repositorio (ver más abajo).
 El paquete de iOS (IPA) no se puede generar desde este entorno Windows —
@@ -86,8 +91,10 @@ generan por ti en segundos si necesitas recompilar.
     adicional del login para quienes activaron la verificación en dos
     pasos: pide el código de 6 dígitos después de la contraseña.
 11. **Panel de administrador** (`lib/screens/admin_panel_screen.dart`) —
-    solo para la cuenta admin (ver abajo); dos pestañas de solo lectura
-    con todos los usuarios registrados y todas las solicitudes creadas.
+    solo para la cuenta admin (ver abajo); dos pestañas con todos los
+    usuarios registrados y todas las solicitudes creadas, cada una con
+    opción de **eliminar** (con confirmación; el admin no puede
+    eliminarse a sí mismo).
 
 ## Cuenta de administrador
 
@@ -131,19 +138,28 @@ instales la app.
   contraseña y selección de rol.
 - `lib/services/session_service.dart`: usuario con sesión activa en
   memoria mientras la app está abierta.
-- `lib/data/database_helper.dart` también administra la tabla
-  `solicitudes` (`id, cliente_id, colaborador_id, tipo, descripcion,
-  localidad, latitud, longitud, estado, fecha_creacion,
-  fecha_actualizacion`) a través de `lib/services/solicitud_service.dart`.
-
 ## Solicitudes y mapa
 
 - **Cliente pide, Colaborador atiende** (como pasajero/conductor en
   Uber): el Cliente llena el formulario (texto o imagen, descripción,
-  localidad) y la solicitud queda `pendiente`; el Colaborador la ve en
-  su lista de "Solicitudes disponibles" y la puede `aceptar`; al
-  terminar la marca como `completada`. El Cliente ve el estado en
-  tiempo real tanto en su pantalla principal como en su perfil.
+  localidad) y la solicitud queda `pendiente`; **todos** los Colaboradores
+  la ven en su lista de "Solicitudes disponibles"; el primero que la
+  `acepta` se la gana (transacción atómica en el backend) y desaparece
+  para los demás; al terminar la marca como `completada`. El Cliente ve
+  el estado en su pantalla principal y en su perfil.
+- Las solicitudes **no viven en SQLite local**: viven en el backend
+  compartido (`backend/`, Node.js + Express + better-sqlite3), porque
+  tienen que poder verse entre distintos dispositivos. Se identifica a
+  cada persona por su **alias** (nunca por el id local de la base de
+  datos del dispositivo, que no significa nada fuera de él).
+  `lib/services/solicitud_service.dart` es el lado de la app que llama a
+  ese backend; sin conexión a él, esta parte de la app no funciona (el
+  resto — login, 2FA, verificación de correo, perfil — sigue local).
+- No hay websockets: la app consulta el backend cada 6 segundos
+  (`Timer.periodic` en `cliente_home_screen.dart` y
+  `colaborador_home_screen.dart`) para simular tiempo real — así una
+  solicitud aceptada por otro colaborador desaparece de la lista en
+  pocos segundos, no al instante.
 - El mapa (`lib/widgets/bogota_map.dart`) usa el paquete `flutter_map`
   con mosaicos de OpenStreetMap (sin necesidad de API key, a diferencia
   de Google Maps).
@@ -153,6 +169,12 @@ instales la app.
   `geolocator`) se solicita al abrir la app, pero no es estrictamente
   bloqueante: si se omite, el mapa simplemente se centra en Bogotá en
   vez de la posición del usuario.
+- `lib/services/content_moderation_service.dart` bloquea automáticamente
+  el envío de una solicitud si su descripción contiene palabras
+  relacionadas con contenido sexual o explotación infantil. Es un filtro
+  por lista de palabras clave (sin acentos, sin distinguir mayúsculas),
+  no un análisis de contexto — bloquea lo más obvio y grave, pero no es
+  infalible.
 
 ## Verificación de correo
 
