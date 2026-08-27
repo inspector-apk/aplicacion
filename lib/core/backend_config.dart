@@ -11,6 +11,14 @@
 class BackendConfig {
   BackendConfig._();
 
-  static const String baseUrl = 'https://TU-DOMINIO-O-IP:3000';
-  static const String apiKey = 'CAMBIA-ESTA-CLAVE-POR-LA-DE-TU-.env';
+  static const String baseUrl = 'https://interested-underwear-python-reduce.trycloudflare.com';
+
+  /// Se inyecta en tiempo de compilación con
+  /// `--dart-define=INSPECTOR_API_KEY=...` para no dejar la clave real
+  /// en el código fuente (el repo es público). En CI viene de un
+  /// GitHub Actions secret; en local, pásala a mano al compilar.
+  static const String apiKey = String.fromEnvironment(
+    'INSPECTOR_API_KEY',
+    defaultValue: 'CAMBIA-ESTA-CLAVE-POR-LA-DE-TU-.env',
+  );
 }

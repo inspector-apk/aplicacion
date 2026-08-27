@@ -19,3 +19,10 @@ web/
 build/*
 !build/Inspector.apk
 
+# Backend: nunca versionar secretos, dependencias ni la base de datos local.
+backend/.env
+backend/node_modules/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+

@@ -33,7 +33,7 @@ jobs:
         run: dart run flutter_launcher_icons -f icons_config_ios.yaml
 
       - name: Compilar la app de iOS (sin firmar)
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --dart-define=INSPECTOR_API_KEY=${{ secrets.INSPECTOR_API_KEY }}
 
       - name: Empaquetar como .ipa
         run: |
