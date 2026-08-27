@@ -253,7 +253,7 @@ flutter doctor
    flutter pub get
    ```
 
-4. **Agrega los permisos de ubicación e internet** en
+4. **Agrega los permisos de ubicación, internet y cámara** en
    `android/app/src/main/AndroidManifest.xml` — no vienen en el
    `flutter create` por defecto, hay que añadirlos a mano justo debajo
    de la etiqueta `<manifest ...>` de apertura:
@@ -262,7 +262,11 @@ flutter doctor
    <uses-permission android:name="android.permission.INTERNET"/>
    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+   <uses-permission android:name="android.permission.CAMERA"/>
    ```
+
+   La cámara la usa `image_picker` para que el Colaborador pueda tomar
+   una foto al responder una solicitud de tipo imagen.
 
 5. Genera el ícono de la app (launcher / Descargas) a partir de
    `assets/icon/app_icon.png` — este paso escribe los mipmaps de Android
@@ -312,12 +316,17 @@ Pasos una vez tengas acceso a macOS:
 2. Repite los pasos 1–3 de la sección anterior (`flutter create`, copiar
    `lib/`/`pubspec.yaml`, `flutter pub get`), pero en macOS. Esto genera
    también la carpeta `ios/`.
-3. Agrega el permiso de ubicación en `ios/Runner/Info.plist`, dentro del
-   `<dict>` principal (igual que el paso 4 de Android, pero para iOS):
+3. Agrega los permisos de ubicación, cámara y fotos en
+   `ios/Runner/Info.plist`, dentro del `<dict>` principal (igual que el
+   paso 4 de Android, pero para iOS):
 
    ```xml
    <key>NSLocationWhenInUseUsageDescription</key>
    <string>Inspector usa tu ubicación para mostrarte el mapa y conectar solicitudes cercanas en Bogotá.</string>
+   <key>NSCameraUsageDescription</key>
+   <string>Inspector necesita la cámara para que los colaboradores tomen fotos al responder solicitudes.</string>
+   <key>NSPhotoLibraryUsageDescription</key>
+   <string>Inspector necesita acceso a tus fotos para adjuntar imágenes al responder solicitudes.</string>
    ```
 
 4. Abre `ios/Runner.xcworkspace` en Xcode y configura un **Team** de

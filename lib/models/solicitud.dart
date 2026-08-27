@@ -51,6 +51,12 @@ class Solicitud {
   final String fechaCreacion;
   final String fechaActualizacion;
 
+  /// Metadatos de la respuesta del colaborador — NUNCA el contenido en
+  /// sí (ese solo se obtiene, una única vez, con
+  /// `SolicitudService.verRespuesta`).
+  final String? respuestaFecha;
+  final bool respuestaVista;
+
   const Solicitud({
     this.id,
     required this.clienteAlias,
@@ -63,7 +69,13 @@ class Solicitud {
     required this.estado,
     required this.fechaCreacion,
     required this.fechaActualizacion,
+    this.respuestaFecha,
+    this.respuestaVista = false,
   });
+
+  /// true si hay una respuesta esperando a que el cliente la vea.
+  bool get tieneRespuestaSinVer =>
+      estado == EstadoSolicitud.completada && !respuestaVista;
 
   Map<String, Object?> toJson() {
     return {
@@ -89,6 +101,8 @@ class Solicitud {
       estado: EstadoSolicitudX.fromValor(json['estado'] as String),
       fechaCreacion: json['fecha_creacion'] as String,
       fechaActualizacion: json['fecha_actualizacion'] as String,
+      respuestaFecha: json['respuesta_fecha'] as String?,
+      respuestaVista: ((json['respuesta_vista'] as num?)?.toInt() ?? 0) == 1,
     );
   }
 }

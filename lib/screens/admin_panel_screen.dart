@@ -317,6 +317,11 @@ class _ListaSolicitudes extends StatelessWidget {
                 '${s.colaboradorAlias != null ? ' · Colaborador: ${s.colaboradorAlias}' : ''}',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
+              Text(
+                'Solicitado: ${s.fechaCreacion}'
+                '${s.respuestaFecha != null ? ' · Respondido: ${s.respuestaFecha}' : ''}',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
             ],
           ),
         );

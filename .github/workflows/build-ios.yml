@@ -23,6 +23,12 @@ jobs:
       - name: Generar el proyecto nativo de iOS
         run: flutter create --platforms=ios --org com.inspector --project-name inspector .
 
+      - name: Agregar permisos a Info.plist (ubicación, cámara, fotos)
+        run: |
+          plutil -insert NSLocationWhenInUseUsageDescription -string "Inspector usa tu ubicación para mostrarte el mapa y conectar solicitudes cercanas en Bogotá." ios/Runner/Info.plist
+          plutil -insert NSCameraUsageDescription -string "Inspector necesita la cámara para que los colaboradores tomen fotos al responder solicitudes." ios/Runner/Info.plist
+          plutil -insert NSPhotoLibraryUsageDescription -string "Inspector necesita acceso a tus fotos para adjuntar imágenes al responder solicitudes." ios/Runner/Info.plist
+
       - name: Generar el ícono de la app
         run: dart run flutter_launcher_icons -f icons_config_ios.yaml
 

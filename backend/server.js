@@ -5,7 +5,8 @@ const db = require('./db');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Límite alto porque una respuesta con foto viaja como base64 en el body.
+app.use(express.json({ limit: '8mb' }));
 
 const PUERTO = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY;
@@ -85,14 +86,55 @@ app.post('/api/solicitudes/:id/aceptar', requiereApiKey, (req, res) => {
   res.json({ ok: true, solicitud });
 });
 
-app.post('/api/solicitudes/:id/completar', requiereApiKey, (req, res) => {
+// El colaborador envía su respuesta (texto o imagen) y con eso mismo
+// queda completada la solicitud.
+app.post('/api/solicitudes/:id/responder', requiereApiKey, (req, res) => {
   const id = Number(req.params.id);
-  const { colaboradorAlias } = req.body;
-  const solicitud = db.completarSolicitud(id, colaboradorAlias);
+  const { colaboradorAlias, texto, imagenBase64 } = req.body;
+
+  if (!colaboradorAlias) {
+    return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
+  }
+  if (!texto && !imagenBase64) {
+    return res.status(400).json({ ok: false, error: 'Debes enviar texto o una imagen' });
+  }
+
+  const solicitud = db.responderSolicitud(id, colaboradorAlias, { texto, imagenBase64 });
   if (!solicitud) {
-    return res.status(409).json({ ok: false, error: 'No se pudo completar la solicitud' });
+    return res
+      .status(409)
+      .json({ ok: false, error: 'No se pudo enviar la respuesta' });
   }
   res.json({ ok: true, solicitud });
+});
+
+// Entrega el contenido de la respuesta UNA SOLA VEZ: se borra del
+// servidor en el mismo momento en que se consulta con éxito. Llamadas
+// posteriores devuelven "ya fue vista".
+app.get('/api/solicitudes/:id/respuesta', requiereApiKey, (req, res) => {
+  const id = Number(req.params.id);
+  const clienteAlias = String(req.query.clienteAlias || '');
+  if (!clienteAlias) {
+    return res.status(400).json({ ok: false, error: 'clienteAlias es requerido' });
+  }
+
+  const contenido = db.consumirRespuesta(id, clienteAlias);
+  if (!contenido) {
+    return res
+      .status(409)
+      .json({ ok: false, error: 'Esta respuesta ya fue vista o no existe' });
+  }
+  res.json({ ok: true, respuesta: contenido });
+});
+
+// Historial completo (cualquier estado) del cliente, sin el contenido
+// de las respuestas — solo metadatos (fecha, quién respondió, etc.).
+app.get('/api/solicitudes/historial', requiereApiKey, (req, res) => {
+  const clienteAlias = String(req.query.clienteAlias || '');
+  if (!clienteAlias) {
+    return res.status(400).json({ ok: false, error: 'clienteAlias es requerido' });
+  }
+  res.json({ ok: true, solicitudes: db.historialDeCliente(clienteAlias) });
 });
 
 app.post('/api/solicitudes/:id/cancelar', requiereApiKey, (req, res) => {

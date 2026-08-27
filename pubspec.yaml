@@ -21,6 +21,7 @@ dependencies:
   qr_flutter: ^4.1.0
   mailer: ^6.1.0
   http: ^1.2.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

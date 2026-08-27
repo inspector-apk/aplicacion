@@ -97,10 +97,22 @@ Todos requieren el header `x-api-key` (excepto `/api/salud`).
 
 - `POST /api/solicitudes` — crea una solicitud (`clienteAlias, tipo, descripcion, localidad, latitud, longitud`)
 - `GET /api/solicitudes/pendientes` — todas las solicitudes en estado `pendiente`
-- `GET /api/solicitudes/activa?clienteAlias=...` — la solicitud activa de un cliente, si tiene una
+- `GET /api/solicitudes/activa?clienteAlias=...` — la solicitud "vigente" de un cliente: en curso, o completada con una respuesta que todavía no ha visto
 - `GET /api/solicitudes/en-curso?colaboradorAlias=...` — las solicitudes que un colaborador tiene aceptadas
 - `POST /api/solicitudes/:id/aceptar` (`colaboradorAlias`) — la acepta; si otro colaborador ya la tomó, responde `409`
-- `POST /api/solicitudes/:id/completar` (`colaboradorAlias`) — la marca como completada
+- `POST /api/solicitudes/:id/responder` (`colaboradorAlias`, y `texto` o `imagenBase64`) — envía la respuesta del colaborador y con eso completa la solicitud
+- `GET /api/solicitudes/:id/respuesta?clienteAlias=...` — entrega el contenido de la respuesta **una sola vez**: lo borra del servidor en el mismo momento en que se consulta con éxito; llamadas posteriores responden `409` ("ya fue vista")
+- `GET /api/solicitudes/historial?clienteAlias=...` — historial completo (cualquier estado) de un cliente, sin el contenido de las respuestas — solo metadatos
 - `POST /api/solicitudes/:id/cancelar` (`clienteAlias`) — el cliente cancela su propia solicitud pendiente
-- `GET /api/solicitudes/todas` — todas, para el panel de administrador
+- `GET /api/solicitudes/todas` — todas, para el panel de administrador (tampoco incluye el contenido de las respuestas)
 - `DELETE /api/solicitudes/:id` — elimina una solicitud, para el panel de administrador
+
+### Sobre la privacidad de las respuestas
+
+El contenido de una respuesta (`respuesta_texto` / `respuesta_imagen_base64`)
+**nunca** se devuelve en ningún endpoint de lista (`pendientes`, `activa`,
+`en-curso`, `todas`, `historial`) — solo en `GET /api/solicitudes/:id/respuesta`,
+y solo si quien pregunta es el mismo `clienteAlias` dueño de la solicitud.
+Al entregarlo, el servidor lo borra de su base de datos en la misma
+consulta: no queda guardado en ningún lado después de que el cliente lo
+vio una vez.

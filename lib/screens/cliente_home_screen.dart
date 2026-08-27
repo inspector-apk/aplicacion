@@ -15,6 +15,7 @@ import '../widgets/map_bottom_panel.dart';
 import '../widgets/map_top_bar.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
+import 'ver_respuesta_screen.dart';
 
 /// Pantalla principal del rol Cliente: mapa de Bogotá con un panel
 /// inferior, al estilo inDrive/Uber. Si no hay una solicitud activa
@@ -131,6 +132,22 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
+  Future<void> _verRespuesta() async {
+    final solicitud = _solicitudActiva;
+    if (solicitud?.id == null) return;
+    await Navigator.of(context).push(
+      AppRoutes.slide(
+        VerRespuestaScreen(
+          solicitudId: solicitud!.id!,
+          clienteAlias: widget.usuario.alias,
+        ),
+      ),
+    );
+    // Al volver, la respuesta ya se consumió en el backend: refrescamos
+    // para que el panel vuelva al formulario de una nueva solicitud.
+    await _cargarSolicitudActiva();
+  }
+
   void _abrirPerfil() {
     Navigator.of(context)
         .push(AppRoutes.slide(HomeScreen(usuario: widget.usuario)));
@@ -168,6 +185,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       solicitud: _solicitudActiva!,
                       cargando: _enviando,
                       onCancelar: _cancelarSolicitud,
+                      onVerRespuesta: _verRespuesta,
                     )
                   : _PanelFormulario(
                       tipo: _tipo,
@@ -291,16 +309,20 @@ class _PanelSeguimiento extends StatelessWidget {
   final Solicitud solicitud;
   final bool cargando;
   final VoidCallback onCancelar;
+  final VoidCallback onVerRespuesta;
 
   const _PanelSeguimiento({
     required this.solicitud,
     required this.cargando,
     required this.onCancelar,
+    required this.onVerRespuesta,
   });
 
   @override
   Widget build(BuildContext context) {
     final esPendiente = solicitud.estado == EstadoSolicitud.pendiente;
+    final tieneRespuesta = solicitud.tieneRespuestaSinVer;
+
     return MapBottomPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,9 +337,11 @@ class _PanelSeguimiento extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  esPendiente
-                      ? Icons.hourglass_top_rounded
-                      : Icons.directions_walk_rounded,
+                  tieneRespuesta
+                      ? Icons.mark_email_unread_outlined
+                      : esPendiente
+                          ? Icons.hourglass_top_rounded
+                          : Icons.directions_walk_rounded,
                   color: Colors.black,
                 ),
               ),
@@ -327,7 +351,9 @@ class _PanelSeguimiento extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      solicitud.estado.etiqueta,
+                      tieneRespuesta
+                          ? '¡Tu colaborador respondió!'
+                          : solicitud.estado.etiqueta,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 16,
@@ -335,9 +361,11 @@ class _PanelSeguimiento extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      esPendiente
-                          ? 'Estamos buscando un colaborador disponible'
-                          : 'Un colaborador va a atender tu solicitud',
+                      tieneRespuesta
+                          ? 'Solo la podrás ver una vez'
+                          : esPendiente
+                              ? 'Estamos buscando un colaborador disponible'
+                              : 'Un colaborador va a atender tu solicitud',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12.5,
@@ -357,7 +385,12 @@ class _PanelSeguimiento extends StatelessWidget {
           SolicitudInfoRow(
               icono: Icons.notes_outlined, texto: solicitud.descripcion),
           const SizedBox(height: 16),
-          if (esPendiente)
+          if (tieneRespuesta)
+            PrimaryButton(
+              label: 'VER RESPUESTA (una sola vez)',
+              onPressed: onVerRespuesta,
+            )
+          else if (esPendiente)
             OutlineActionButton(
               label: cargando ? 'CANCELANDO...' : 'CANCELAR SOLICITUD',
               onPressed: cargando ? null : onCancelar,

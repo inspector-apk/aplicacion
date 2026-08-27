@@ -9,6 +9,7 @@ import '../services/session_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/solicitud_info_row.dart';
+import 'historial_solicitudes_screen.dart';
 import 'role_selection_screen.dart';
 import 'splash_screen.dart';
 import 'two_factor_setup_screen.dart';
@@ -242,6 +243,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 _SolicitudActivaCard(
                   solicitud: _solicitudActiva,
                   cargando: _cargandoSolicitud,
+                ),
+                const SizedBox(height: 12),
+                OutlineActionButton(
+                  label: 'VER HISTORIAL DE SOLICITUDES',
+                  onPressed: () {
+                    Navigator.of(context).push(AppRoutes.slide(
+                      HistorialSolicitudesScreen(usuario: usuario),
+                    ));
+                  },
                 ),
               ],
               if (usuario.rol == RolUsuario.colaborador) ...[

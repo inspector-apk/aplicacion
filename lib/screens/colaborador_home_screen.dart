@@ -14,6 +14,7 @@ import '../widgets/map_bottom_panel.dart';
 import '../widgets/map_top_bar.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
+import 'responder_solicitud_screen.dart';
 
 /// Pantalla principal del rol Colaborador: mapa de Bogotá con las
 /// solicitudes disponibles (como el conductor viendo viajes en Uber),
@@ -87,22 +88,13 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
     }
   }
 
-  Future<void> _completar(Solicitud solicitud) async {
-    setState(() => _procesandoId = solicitud.id);
-    try {
-      await SolicitudService.completarSolicitud(
-        solicitudId: solicitud.id!,
-        colaboradorAlias: widget.usuario.alias,
-      );
-      await _cargarDatos();
-    } on SolicitudException catch (e) {
-      _mostrarMensaje(e.mensaje);
-    } catch (_) {
-      _mostrarMensaje(
-          'No se pudo conectar con el servidor. Revisa tu conexión.');
-    } finally {
-      if (mounted) setState(() => _procesandoId = null);
-    }
+  Future<void> _responder(Solicitud solicitud) async {
+    final enviada = await Navigator.of(context).push<bool>(
+      AppRoutes.slide(
+        ResponderSolicitudScreen(solicitud: solicitud, usuario: widget.usuario),
+      ),
+    );
+    if (enviada == true) await _cargarDatos();
   }
 
   void _mostrarMensaje(String mensaje) {
@@ -146,7 +138,7 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
                   enCurso: _enCurso,
                   procesandoId: _procesandoId,
                   onAceptar: _aceptar,
-                  onCompletar: _completar,
+                  onResponder: _responder,
                 ),
               ),
             ),
@@ -161,14 +153,14 @@ class _ListaSolicitudes extends StatelessWidget {
   final List<Solicitud> enCurso;
   final int? procesandoId;
   final ValueChanged<Solicitud> onAceptar;
-  final ValueChanged<Solicitud> onCompletar;
+  final ValueChanged<Solicitud> onResponder;
 
   const _ListaSolicitudes({
     required this.pendientes,
     required this.enCurso,
     required this.procesandoId,
     required this.onAceptar,
-    required this.onCompletar,
+    required this.onResponder,
   });
 
   @override
@@ -207,8 +199,8 @@ class _ListaSolicitudes extends StatelessWidget {
               (s) => _SolicitudCard(
                 solicitud: s,
                 cargando: procesandoId == s.id,
-                accionLabel: 'MARCAR COMPLETADA',
-                onAccion: () => onCompletar(s),
+                accionLabel: 'RESPONDER',
+                onAccion: () => onResponder(s),
               ),
             ),
             const SizedBox(height: 18),
