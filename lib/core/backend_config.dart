@@ -11,7 +11,7 @@
 class BackendConfig {
   BackendConfig._();
 
-  static const String baseUrl = 'https://interested-underwear-python-reduce.trycloudflare.com';
+  static const String baseUrl = 'http://appinspector.servialco.com:12443';
 
   /// Se inyecta en tiempo de compilación con
   /// `--dart-define=INSPECTOR_API_KEY=...` para no dejar la clave real

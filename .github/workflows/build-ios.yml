@@ -29,6 +29,17 @@ jobs:
           plutil -insert NSCameraUsageDescription -string "Inspector necesita la cámara para que los colaboradores tomen fotos al responder solicitudes." ios/Runner/Info.plist
           plutil -insert NSPhotoLibraryUsageDescription -string "Inspector necesita acceso a tus fotos para adjuntar imágenes al responder solicitudes." ios/Runner/Info.plist
 
+      - name: Permitir HTTP sin cifrar hacia el backend (ATS)
+        run: |
+          plutil -insert NSAppTransportSecurity -json '{
+            "NSExceptionDomains": {
+              "appinspector.servialco.com": {
+                "NSExceptionAllowsInsecureHTTPLoads": true,
+                "NSIncludesSubdomains": false
+              }
+            }
+          }' ios/Runner/Info.plist
+
       - name: Generar el ícono de la app
         run: dart run flutter_launcher_icons -f icons_config_ios.yaml
 
