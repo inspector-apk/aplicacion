@@ -106,6 +106,9 @@ Todos requieren el header `x-api-key` (excepto `/api/salud`).
 - `POST /api/solicitudes/:id/cancelar` (`clienteAlias`) — el cliente cancela su propia solicitud pendiente
 - `GET /api/solicitudes/todas` — todas, para el panel de administrador (tampoco incluye el contenido de las respuestas)
 - `DELETE /api/solicitudes/:id` — elimina una solicitud, para el panel de administrador
+- `POST /api/colaboradores/ubicacion` — el colaborador envía su posición mientras está "disponible" (`colaboradorAlias, latitud, longitud`), para mostrarlo en el mapa del cliente como los carros de Uber/Didi
+- `POST /api/colaboradores/desconectar` — el colaborador avisa que ya no está disponible (`colaboradorAlias`)
+- `GET /api/colaboradores/cercanos` — posiciones aproximadas y difuminadas de los colaboradores disponibles ahora mismo
 
 ### Sobre la privacidad de las respuestas
 
@@ -116,3 +119,14 @@ y solo si quien pregunta es el mismo `clienteAlias` dueño de la solicitud.
 Al entregarlo, el servidor lo borra de su base de datos en la misma
 consulta: no queda guardado en ningún lado después de que el cliente lo
 vio una vez.
+
+### Sobre la posición de los colaboradores en el mapa
+
+La posición que envían los colaboradores (`POST /api/colaboradores/ubicacion`)
+**no se guarda en la base de datos ni en disco** — vive solo en memoria
+mientras el proceso del backend está corriendo, y cada colaborador
+desaparece del mapa automáticamente si deja de enviarla por 90 segundos
+(cerró la app, perdió conexión, etc.). Además, antes de entregarla a los
+clientes (`GET /api/colaboradores/cercanos`) el servidor le aplica un
+desplazamiento aleatorio de ~150m: nunca se expone la ubicación exacta
+del colaborador, solo un punto aproximado alrededor de ella.

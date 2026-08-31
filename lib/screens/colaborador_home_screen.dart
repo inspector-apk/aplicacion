@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
+import '../services/location_service.dart';
 import '../services/solicitud_service.dart';
+import '../services/ubicacion_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/bogota_map.dart';
 import '../widgets/map_bottom_panel.dart';
@@ -33,6 +35,7 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   bool _cargandoInicial = true;
   int? _procesandoId;
   Timer? _actualizacionPeriodica;
+  Timer? _envioUbicacion;
 
   @override
   void initState() {
@@ -43,12 +46,36 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
     // cuanto alguien más la acepta primero.
     _actualizacionPeriodica =
         Timer.periodic(const Duration(seconds: 6), (_) => _cargarDatos());
+
+    // Mientras esta pantalla está abierta el colaborador cuenta como
+    // "disponible": se envía su posición aproximada cada 15s para que
+    // los clientes lo vean en el mapa, como los carros de Uber/Didi.
+    _enviarUbicacionPropia();
+    _envioUbicacion =
+        Timer.periodic(const Duration(seconds: 15), (_) => _enviarUbicacionPropia());
   }
 
   @override
   void dispose() {
     _actualizacionPeriodica?.cancel();
+    _envioUbicacion?.cancel();
+    UbicacionService.desconectar(widget.usuario.alias);
     super.dispose();
+  }
+
+  Future<void> _enviarUbicacionPropia() async {
+    try {
+      if (!await LocationService.tienePermisoConcedido()) return;
+      final posicion = await Geolocator.getCurrentPosition();
+      await UbicacionService.enviarUbicacion(
+        colaboradorAlias: widget.usuario.alias,
+        latitud: posicion.latitude,
+        longitud: posicion.longitude,
+      );
+    } catch (_) {
+      // Sin ubicación disponible en este ciclo: no es crítico, no
+      // afecta el resto de la pantalla.
+    }
   }
 
   Future<void> _cargarDatos() async {

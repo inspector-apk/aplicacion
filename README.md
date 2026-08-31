@@ -169,6 +169,14 @@ instales la app.
   `geolocator`) se solicita al abrir la app, pero no es estrictamente
   bloqueante: si se omite, el mapa simplemente se centra en Bogotá en
   vez de la posición del usuario.
+- **Colaboradores en el mapa (estilo Uber/Didi)**: mientras un
+  Colaborador tiene su pantalla de inicio abierta ("disponible"), la app
+  envía su posición cada 15s (`lib/services/ubicacion_service.dart`) y el
+  Cliente los ve como íconos de lupa dorados moviéndose por el mapa antes
+  de pedir su solicitud. Es presencia efímera: el backend
+  (`backend/ubicaciones.js`) la guarda solo en memoria (nunca en la base
+  de datos), la difumina ~150m por privacidad antes de mostrarla, y cada
+  colaborador desaparece solo si deja de enviarla por 90s.
 - `lib/services/content_moderation_service.dart` bloquea automáticamente
   el envío de una solicitud si su descripción contiene palabras
   relacionadas con contenido sexual o explotación infantil. Es un filtro

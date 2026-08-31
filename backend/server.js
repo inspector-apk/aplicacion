@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
+const ubicaciones = require('./ubicaciones');
 
 const app = express();
 app.use(cors());
@@ -155,6 +156,37 @@ app.get('/api/solicitudes/todas', requiereApiKey, (req, res) => {
 app.delete('/api/solicitudes/:id', requiereApiKey, (req, res) => {
   db.eliminarSolicitud(Number(req.params.id));
   res.json({ ok: true });
+});
+
+// El colaborador envía su posición mientras tiene la pantalla de inicio
+// abierta ("disponible"), para que los clientes lo vean en el mapa como
+// los carros de Uber/Didi. Se guarda solo en memoria (ver ubicaciones.js)
+// y expira sola si deja de enviarse.
+app.post('/api/colaboradores/ubicacion', requiereApiKey, (req, res) => {
+  const { colaboradorAlias, latitud, longitud } = req.body;
+  if (!colaboradorAlias || typeof colaboradorAlias !== 'string') {
+    return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
+  }
+  if (typeof latitud !== 'number' || typeof longitud !== 'number') {
+    return res.status(400).json({ ok: false, error: 'latitud/longitud inválidas' });
+  }
+  ubicaciones.actualizarUbicacion(colaboradorAlias, latitud, longitud);
+  res.json({ ok: true });
+});
+
+// El colaborador avisa que ya no está disponible (cierra sesión o sale
+// de la pantalla de inicio) para desaparecer del mapa de inmediato.
+app.post('/api/colaboradores/desconectar', requiereApiKey, (req, res) => {
+  const { colaboradorAlias } = req.body;
+  if (colaboradorAlias) ubicaciones.quitarUbicacion(colaboradorAlias);
+  res.json({ ok: true });
+});
+
+// Posiciones aproximadas (difuminadas por privacidad) de los
+// colaboradores disponibles ahora mismo, para pintarlos en el mapa del
+// Cliente.
+app.get('/api/colaboradores/cercanos', requiereApiKey, (req, res) => {
+  res.json({ ok: true, colaboradores: ubicaciones.colaboradoresCercanos() });
 });
 
 app.get('/api/salud', (req, res) => res.json({ ok: true }));

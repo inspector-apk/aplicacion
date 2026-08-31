@@ -56,3 +56,28 @@ Marker buildPinMarker({
     child: Icon(icon, color: color, size: 38),
   );
 }
+
+/// Colaborador disponible en el mapa, al estilo de los carros de
+/// Uber/Didi — pero con la lupa de "Inspector" en vez de un vehículo,
+/// dentro de una placa dorada como el resto de la identidad de la app.
+Marker buildColaboradorMarker({required LatLng punto}) {
+  return Marker(
+    point: punto,
+    width: 34,
+    height: 34,
+    child: Container(
+      decoration: BoxDecoration(
+        color: AppColors.accent,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.background, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withOpacity(0.5),
+            blurRadius: 6,
+          ),
+        ],
+      ),
+      child: const Icon(Icons.travel_explore, color: Colors.black, size: 19),
+    ),
+  );
+}

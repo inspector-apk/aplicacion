@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
@@ -9,6 +8,7 @@ import '../models/solicitud.dart';
 import '../models/usuario.dart';
 import '../services/content_moderation_service.dart';
 import '../services/solicitud_service.dart';
+import '../services/ubicacion_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/bogota_map.dart';
 import '../widgets/map_bottom_panel.dart';
@@ -38,6 +38,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String? _localidad;
   final _descripcionCtrl = TextEditingController();
   Timer? _actualizacionPeriodica;
+  Timer? _actualizacionColaboradores;
+  List<ColaboradorCercano> _colaboradoresCercanos = [];
 
   @override
   void initState() {
@@ -47,13 +49,29 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     // tiempo real (ej. cuando un colaborador acepta la solicitud).
     _actualizacionPeriodica =
         Timer.periodic(const Duration(seconds: 6), (_) => _cargarSolicitudActiva());
+
+    // Colaboradores disponibles cerca, como los carros de Uber/Didi.
+    _cargarColaboradoresCercanos();
+    _actualizacionColaboradores = Timer.periodic(
+        const Duration(seconds: 15), (_) => _cargarColaboradoresCercanos());
   }
 
   @override
   void dispose() {
     _descripcionCtrl.dispose();
     _actualizacionPeriodica?.cancel();
+    _actualizacionColaboradores?.cancel();
     super.dispose();
+  }
+
+  Future<void> _cargarColaboradoresCercanos() async {
+    try {
+      final colaboradores = await UbicacionService.colaboradoresCercanos();
+      if (!mounted) return;
+      setState(() => _colaboradoresCercanos = colaboradores);
+    } catch (_) {
+      // Sin conexión momentánea: se reintenta en el próximo ciclo.
+    }
   }
 
   Future<void> _cargarSolicitudActiva() async {
@@ -159,14 +177,18 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ? kLocalidadesBogota[_solicitudActiva!.localidad]
         : (_localidad != null ? kLocalidadesBogota[_localidad] : null);
 
-    final marcadores = _solicitudActiva != null
-        ? [
-            buildPinMarker(
-              punto: kLocalidadesBogota[_solicitudActiva!.localidad] ??
-                  kBogotaCenter,
-            ),
-          ]
-        : <Marker>[];
+    final marcadores = [
+      if (_solicitudActiva != null)
+        buildPinMarker(
+          punto: kLocalidadesBogota[_solicitudActiva!.localidad] ??
+              kBogotaCenter,
+        ),
+      // Solo se muestran mientras no hay una solicitud activa (como en
+      // Uber: ves los carros disponibles antes de pedir el viaje).
+      if (_solicitudActiva == null)
+        ..._colaboradoresCercanos
+            .map((c) => buildColaboradorMarker(punto: c.punto)),
+    ];
 
     return Scaffold(
       body: Stack(
