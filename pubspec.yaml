@@ -23,6 +23,7 @@ dependencies:
   http: ^1.2.0
   image_picker: ^1.1.2
   exif: ^3.3.0
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:

@@ -187,6 +187,13 @@ instales la app.
   - Metadatos EXIF típicos de cámara real (marca, modelo, fecha,
     exposición, GPS, miniatura) — cuantos más aparecen, más fuerte la
     señal de que es una foto real.
+  - Dimensiones "de laboratorio" (cuadrada y múltiplo exacto de 64px,
+    típico de modelos de difusión), leídas de la cabecera del archivo
+    sin decodificar toda la imagen.
+  - Ruido de píxeles: decodifica la foto (en un isolate aparte, para no
+    trabar la interfaz) y mide cuánto grano de alta frecuencia queda en
+    sus zonas más planas (cielos, fondos) — una IA suele dejarlas
+    anormalmente lisas; una cámara real conserva ruido de sensor.
   El resultado nunca afirma 0% ni 100% (queda entre 3% y 97%): sigue
   siendo una estimación, no una prueba. Si no encuentra ninguna señal,
   lo marca como "no concluyente" (50/50). Si el % de IA llega a 60% o
