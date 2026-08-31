@@ -172,12 +172,15 @@ instales la app.
 - **Detección de fotos generadas por IA**: antes de enviar una foto de
   respuesta, el Colaborador ve un % de veracidad y un % de probabilidad
   de IA (`lib/screens/responder_solicitud_screen.dart`, servicio
-  `lib/services/deteccion_ia_service.dart`). El análisis lo hace el
-  backend (`backend/deteccion_ia.js`) llamando a un servicio externo
-  real (Sightengine, plan gratuito — ver `backend/README.md`), nunca la
-  app directamente, para no exponer esa clave. Si la foto parece
-  generada por IA (≥60%), el colaborador debe confirmar explícitamente
-  con un checkbox que la foto es real antes de poder enviarla.
+  `lib/services/deteccion_ia_service.dart`). Es 100% local: no llama a
+  ningún servicio externo, no necesita cuenta ni conexión ni backend —
+  analiza los metadatos de la propia foto en el celular (EXIF de
+  cámara en JPEG; chunks de texto con "parameters"/nombre de generador
+  en PNG). Es una heurística aproximada, no una verificación certera: si
+  no encuentra ninguna señal clara, lo marca como "no concluyente". Si
+  encuentra una marca explícita de generador de IA (≥60% de IA), el
+  colaborador debe confirmar con un checkbox que la foto es real antes
+  de poder enviarla.
 - **Colaboradores en el mapa (estilo Uber/Didi)**: mientras un
   Colaborador tiene su pantalla de inicio abierta ("disponible"), la app
   envía su posición cada 15s (`lib/services/ubicacion_service.dart`) y el

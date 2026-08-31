@@ -72,7 +72,9 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
   }
 
   /// Antes de poder enviarla, se analiza la foto para detectar si
-  /// parece generada por IA (ver `backend/deteccion_ia.js`).
+  /// parece generada por IA. Todo corre en el celular, sobre los
+  /// metadatos de la propia foto — no llama a ningún servicio externo
+  /// ni requiere conexión (ver `lib/services/deteccion_ia_service.dart`).
   Future<void> _analizarImagenSeleccionada() async {
     final archivo = _imagenSeleccionada;
     if (archivo == null) return;
@@ -82,17 +84,12 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
     });
     try {
       final bytes = await archivo.readAsBytes();
-      final resultado =
-          await DeteccionIAService.analizarImagen(base64Encode(bytes));
+      final resultado = await DeteccionIAService.analizarImagen(bytes);
       if (!mounted) return;
       setState(() => _resultadoIA = resultado);
-    } on DeteccionIAException catch (e) {
-      if (!mounted) return;
-      setState(() => _errorAnalisisIA = e.mensaje);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _errorAnalisisIA =
-          'No se pudo analizar la foto. Revisa tu conexión.');
+      setState(() => _errorAnalisisIA = 'No se pudo analizar la foto.');
     } finally {
       if (mounted) setState(() => _analizandoIA = false);
     }
@@ -344,7 +341,9 @@ class _PanelDeteccionIA extends StatelessWidget {
     if (r == null) return const SizedBox.shrink();
 
     final esSospechosa = r.iaPorcentaje >= _kUmbralConfirmacionIA;
-    final colorIA = esSospechosa ? AppColors.error : AppColors.success;
+    final colorIA = esSospechosa
+        ? AppColors.error
+        : (r.concluyente ? AppColors.success : AppColors.textMuted);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -359,17 +358,23 @@ class _PanelDeteccionIA extends StatelessWidget {
           Row(
             children: [
               Icon(
-                esSospechosa ? Icons.warning_amber_rounded : Icons.verified_outlined,
+                esSospechosa
+                    ? Icons.warning_amber_rounded
+                    : (r.concluyente ? Icons.verified_outlined : Icons.help_outline),
                 color: colorIA,
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                esSospechosa
-                    ? 'Esta foto parece generada por IA'
-                    : 'La foto parece real',
-                style: TextStyle(
-                    color: colorIA, fontWeight: FontWeight.w700, fontSize: 13),
+              Expanded(
+                child: Text(
+                  esSospechosa
+                      ? 'Esta foto parece generada por IA'
+                      : (r.concluyente
+                          ? 'La foto parece real'
+                          : 'No se pudo determinar el origen de la foto'),
+                  style: TextStyle(
+                      color: colorIA, fontWeight: FontWeight.w700, fontSize: 13),
+                ),
               ),
             ],
           ),
@@ -383,6 +388,12 @@ class _PanelDeteccionIA extends StatelessWidget {
               etiqueta: 'Probabilidad de IA',
               porcentaje: r.iaPorcentaje,
               color: colorIA),
+          const SizedBox(height: 8),
+          const Text(
+            'Estimación automática basada en los datos de la foto, hecha en '
+            'el celular. No es una verificación certera.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+          ),
           if (esSospechosa) ...[
             const SizedBox(height: 12),
             InkWell(

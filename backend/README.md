@@ -91,27 +91,6 @@ static const String apiKey = 'la-misma-clave-que-pusiste-en-.env';
 
 Vuelve a compilar el APK/IPA para que tome estos valores.
 
-## 8. Detección de fotos generadas por IA (opcional)
-
-Antes de enviar una foto de respuesta, el Colaborador ve el % de
-veracidad y el % de probabilidad de IA de esa foto. Esto usa un
-servicio externo real de detección — no algo calculable de forma
-confiable con código local —, así que necesitas una cuenta:
-
-1. Crea una cuenta gratuita en <https://sightengine.com> (tiene un plan
-   de prueba con operaciones gratis al mes, suficiente para probar).
-2. En su panel, copia tu **API User** y **API Secret**.
-3. En `.env`, completa:
-   ```
-   SIGHTENGINE_API_USER=tu-api-user
-   SIGHTENGINE_API_SECRET=tu-api-secret
-   ```
-4. Reinicia el backend (`sudo systemctl restart inspector-verificacion`).
-
-Si dejas esas dos variables vacías, esa función simplemente no
-funciona (el Colaborador ve un aviso de que no está disponible) — el
-resto del backend sigue funcionando igual.
-
 ## Endpoints
 
 Todos requieren el header `x-api-key` (excepto `/api/salud`).
@@ -130,7 +109,6 @@ Todos requieren el header `x-api-key` (excepto `/api/salud`).
 - `POST /api/colaboradores/ubicacion` — el colaborador envía su posición mientras está "disponible" (`colaboradorAlias, latitud, longitud`), para mostrarlo en el mapa del cliente como los carros de Uber/Didi
 - `POST /api/colaboradores/desconectar` — el colaborador avisa que ya no está disponible (`colaboradorAlias`)
 - `GET /api/colaboradores/cercanos` — posiciones aproximadas y difuminadas de los colaboradores disponibles ahora mismo
-- `POST /api/deteccion-ia` — analiza una foto (`imagenBase64`) y devuelve `iaPorcentaje`/`veracidadPorcentaje`; el colaborador la usa antes de enviar una respuesta con imagen
 
 ### Sobre la privacidad de las respuestas
 
