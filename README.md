@@ -169,6 +169,15 @@ instales la app.
   `geolocator`) se solicita al abrir la app, pero no es estrictamente
   bloqueante: si se omite, el mapa simplemente se centra en Bogotá en
   vez de la posición del usuario.
+- **Detección de fotos generadas por IA**: antes de enviar una foto de
+  respuesta, el Colaborador ve un % de veracidad y un % de probabilidad
+  de IA (`lib/screens/responder_solicitud_screen.dart`, servicio
+  `lib/services/deteccion_ia_service.dart`). El análisis lo hace el
+  backend (`backend/deteccion_ia.js`) llamando a un servicio externo
+  real (Sightengine, plan gratuito — ver `backend/README.md`), nunca la
+  app directamente, para no exponer esa clave. Si la foto parece
+  generada por IA (≥60%), el colaborador debe confirmar explícitamente
+  con un checkbox que la foto es real antes de poder enviarla.
 - **Colaboradores en el mapa (estilo Uber/Didi)**: mientras un
   Colaborador tiene su pantalla de inicio abierta ("disponible"), la app
   envía su posición cada 15s (`lib/services/ubicacion_service.dart`) y el

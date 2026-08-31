@@ -7,8 +7,13 @@ import 'package:image_picker/image_picker.dart';
 import '../core/app_colors.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
+import '../services/deteccion_ia_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
+
+/// A partir de este % de IA se le pide al colaborador confirmar
+/// explícitamente que la foto es real antes de dejarlo enviarla.
+const int _kUmbralConfirmacionIA = 60;
 
 /// Pantalla donde el Colaborador responde una solicitud que aceptó:
 /// texto si la solicitud pedía texto, o una foto (galería o cámara) si
@@ -33,7 +38,15 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
   bool _enviando = false;
   String? _error;
 
+  bool _analizandoIA = false;
+  ResultadoDeteccionIA? _resultadoIA;
+  String? _errorAnalisisIA;
+  bool _confirmoFotoReal = false;
+
   bool get _esTexto => widget.solicitud.tipo == TipoSolicitud.texto;
+
+  bool get _requiereConfirmacionIA =>
+      _resultadoIA != null && _resultadoIA!.iaPorcentaje >= _kUmbralConfirmacionIA;
 
   @override
   void dispose() {
@@ -49,7 +62,40 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
       imageQuality: 70,
     );
     if (archivo == null) return;
-    setState(() => _imagenSeleccionada = File(archivo.path));
+    setState(() {
+      _imagenSeleccionada = File(archivo.path);
+      _resultadoIA = null;
+      _errorAnalisisIA = null;
+      _confirmoFotoReal = false;
+    });
+    await _analizarImagenSeleccionada();
+  }
+
+  /// Antes de poder enviarla, se analiza la foto para detectar si
+  /// parece generada por IA (ver `backend/deteccion_ia.js`).
+  Future<void> _analizarImagenSeleccionada() async {
+    final archivo = _imagenSeleccionada;
+    if (archivo == null) return;
+    setState(() {
+      _analizandoIA = true;
+      _errorAnalisisIA = null;
+    });
+    try {
+      final bytes = await archivo.readAsBytes();
+      final resultado =
+          await DeteccionIAService.analizarImagen(base64Encode(bytes));
+      if (!mounted) return;
+      setState(() => _resultadoIA = resultado);
+    } on DeteccionIAException catch (e) {
+      if (!mounted) return;
+      setState(() => _errorAnalisisIA = e.mensaje);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _errorAnalisisIA =
+          'No se pudo analizar la foto. Revisa tu conexión.');
+    } finally {
+      if (mounted) setState(() => _analizandoIA = false);
+    }
   }
 
   Future<void> _enviar() async {
@@ -67,6 +113,15 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
     } else {
       if (_imagenSeleccionada == null) {
         setState(() => _error = 'Elige o toma una foto');
+        return;
+      }
+      if (_analizandoIA) {
+        setState(() => _error = 'Espera a que termine el análisis de la foto');
+        return;
+      }
+      if (_requiereConfirmacionIA && !_confirmoFotoReal) {
+        setState(() => _error =
+            'Esta foto parece generada por IA: confirma que es real antes de enviarla');
         return;
       }
       final bytes = await _imagenSeleccionada!.readAsBytes();
@@ -189,6 +244,17 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
                   ),
                 ],
               ),
+              if (_imagenSeleccionada != null) ...[
+                const SizedBox(height: 14),
+                _PanelDeteccionIA(
+                  analizando: _analizandoIA,
+                  resultado: _resultadoIA,
+                  error: _errorAnalisisIA,
+                  confirmoFotoReal: _confirmoFotoReal,
+                  onConfirmarChanged: (v) =>
+                      setState(() => _confirmoFotoReal = v),
+                ),
+              ],
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
@@ -199,11 +265,197 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
             PrimaryButton(
               label: 'ENVIAR RESPUESTA',
               isLoading: _enviando,
-              onPressed: _enviar,
+              onPressed: _analizandoIA ? null : _enviar,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Muestra el % de veracidad y el % de IA de la foto elegida, antes de
+/// que el colaborador pueda enviarla.
+class _PanelDeteccionIA extends StatelessWidget {
+  final bool analizando;
+  final ResultadoDeteccionIA? resultado;
+  final String? error;
+  final bool confirmoFotoReal;
+  final ValueChanged<bool> onConfirmarChanged;
+
+  const _PanelDeteccionIA({
+    required this.analizando,
+    required this.resultado,
+    required this.error,
+    required this.confirmoFotoReal,
+    required this.onConfirmarChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (analizando) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.4, color: AppColors.accent),
+            ),
+            SizedBox(width: 12),
+            Text('Analizando si la foto es generada por IA...',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+          ],
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: AppColors.textMuted, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No se pudo verificar la foto: $error. Puedes seguir y enviarla igual.',
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final r = resultado;
+    if (r == null) return const SizedBox.shrink();
+
+    final esSospechosa = r.iaPorcentaje >= _kUmbralConfirmacionIA;
+    final colorIA = esSospechosa ? AppColors.error : AppColors.success;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: esSospechosa ? AppColors.error : AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                esSospechosa ? Icons.warning_amber_rounded : Icons.verified_outlined,
+                color: colorIA,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                esSospechosa
+                    ? 'Esta foto parece generada por IA'
+                    : 'La foto parece real',
+                style: TextStyle(
+                    color: colorIA, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _BarraPorcentaje(
+              etiqueta: 'Veracidad',
+              porcentaje: r.veracidadPorcentaje,
+              color: AppColors.success),
+          const SizedBox(height: 6),
+          _BarraPorcentaje(
+              etiqueta: 'Probabilidad de IA',
+              porcentaje: r.iaPorcentaje,
+              color: colorIA),
+          if (esSospechosa) ...[
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => onConfirmarChanged(!confirmoFotoReal),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: confirmoFotoReal,
+                    activeColor: AppColors.accent,
+                    onChanged: (v) => onConfirmarChanged(v ?? false),
+                  ),
+                  const Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Confirmo que esta foto es real y no fue generada por IA',
+                        style: TextStyle(
+                            color: AppColors.textPrimary, fontSize: 12.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BarraPorcentaje extends StatelessWidget {
+  final String etiqueta;
+  final int porcentaje;
+  final Color color;
+
+  const _BarraPorcentaje({
+    required this.etiqueta,
+    required this.porcentaje,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 118,
+          child: Text(etiqueta,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: porcentaje / 100,
+              minHeight: 8,
+              backgroundColor: AppColors.border,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 36,
+          child: Text('$porcentaje%',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+        ),
+      ],
     );
   }
 }

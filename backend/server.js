@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./db');
 const ubicaciones = require('./ubicaciones');
+const deteccionIA = require('./deteccion_ia');
 
 const app = express();
 app.use(cors());
@@ -187,6 +188,22 @@ app.post('/api/colaboradores/desconectar', requiereApiKey, (req, res) => {
 // Cliente.
 app.get('/api/colaboradores/cercanos', requiereApiKey, (req, res) => {
   res.json({ ok: true, colaboradores: ubicaciones.colaboradoresCercanos() });
+});
+
+// El colaborador la llama antes de enviar una foto de respuesta: analiza
+// si la imagen parece generada por IA y devuelve el % de veracidad y el
+// % de IA, para que decida si la envía o no.
+app.post('/api/deteccion-ia', requiereApiKey, async (req, res) => {
+  const { imagenBase64 } = req.body;
+  if (!imagenBase64 || typeof imagenBase64 !== 'string') {
+    return res.status(400).json({ ok: false, error: 'imagenBase64 es requerido' });
+  }
+  try {
+    const resultado = await deteccionIA.analizarImagen(imagenBase64);
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message || 'No se pudo analizar la imagen' });
+  }
 });
 
 app.get('/api/salud', (req, res) => res.json({ ok: true }));
