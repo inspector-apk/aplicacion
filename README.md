@@ -173,14 +173,25 @@ instales la app.
   respuesta, el Colaborador ve un % de veracidad y un % de probabilidad
   de IA (`lib/screens/responder_solicitud_screen.dart`, servicio
   `lib/services/deteccion_ia_service.dart`). Es 100% local: no llama a
-  ningún servicio externo, no necesita cuenta ni conexión ni backend —
-  analiza los metadatos de la propia foto en el celular (EXIF de
-  cámara en JPEG; chunks de texto con "parameters"/nombre de generador
-  en PNG). Es una heurística aproximada, no una verificación certera: si
-  no encuentra ninguna señal clara, lo marca como "no concluyente". Si
-  encuentra una marca explícita de generador de IA (≥60% de IA), el
-  colaborador debe confirmar con un checkbox que la foto es real antes
-  de poder enviarla.
+  ningún servicio externo, no necesita cuenta ni conexión ni backend.
+  Combina varias señales de los metadatos de la propia foto con un
+  puntaje ponderado (no una regla única):
+  - Estándar IPTC/C2PA "Content Credentials" (`DigitalSourceType`,
+    `trainedAlgorithmicMedia`) que cada vez más generadores (OpenAI,
+    Google, Microsoft, Adobe...) usan por norma para declarar que una
+    imagen es de IA — la señal más confiable de todas.
+  - Nombre de un generador conocido (Midjourney, Stable Diffusion,
+    DALL·E, Firefly...) o parámetros típicos de generación ("cfg
+    scale", "sampler") en cualquier parte del archivo (cubre PNG
+    tEXt/iTXt, XMP embebido en JPEG, comentarios, etc.).
+  - Metadatos EXIF típicos de cámara real (marca, modelo, fecha,
+    exposición, GPS, miniatura) — cuantos más aparecen, más fuerte la
+    señal de que es una foto real.
+  El resultado nunca afirma 0% ni 100% (queda entre 3% y 97%): sigue
+  siendo una estimación, no una prueba. Si no encuentra ninguna señal,
+  lo marca como "no concluyente" (50/50). Si el % de IA llega a 60% o
+  más, el colaborador debe confirmar con un checkbox que la foto es
+  real antes de poder enviarla.
 - **Colaboradores en el mapa (estilo Uber/Didi)**: mientras un
   Colaborador tiene su pantalla de inicio abierta ("disponible"), la app
   envía su posición cada 15s (`lib/services/ubicacion_service.dart`) y el
