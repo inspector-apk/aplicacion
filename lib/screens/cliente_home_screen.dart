@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
+import '../core/precios.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
 import '../services/content_moderation_service.dart';
@@ -35,9 +36,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   bool _cargandoInicial = true;
   bool _enviando = false;
 
-  TipoSolicitud _tipo = TipoSolicitud.texto;
+  Categoria _categoria = Categoria.personal;
+  final Set<TipoSolicitud> _tipos = {TipoSolicitud.texto};
   String? _localidad;
   final _descripcionCtrl = TextEditingController();
+  final _direccionCtrl = TextEditingController();
   Timer? _actualizacionPeriodica;
   Timer? _actualizacionColaboradores;
   List<ColaboradorCercano> _colaboradoresCercanos = [];
@@ -65,6 +68,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   @override
   void dispose() {
     _descripcionCtrl.dispose();
+    _direccionCtrl.dispose();
     _actualizacionPeriodica?.cancel();
     _actualizacionColaboradores?.cancel();
     super.dispose();
@@ -95,9 +99,27 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     }
   }
 
+  void _alternarTipo(TipoSolicitud t) {
+    setState(() {
+      if (_tipos.contains(t)) {
+        if (_tipos.length > 1) _tipos.remove(t); // siempre queda ≥1 elegido
+      } else {
+        _tipos.add(t);
+      }
+    });
+  }
+
   Future<void> _enviarSolicitud() async {
+    if (_tipos.isEmpty) {
+      _mostrarMensaje('Elige al menos un tipo de contenido');
+      return;
+    }
     if (_localidad == null) {
       _mostrarMensaje('Selecciona la localidad');
+      return;
+    }
+    if (_direccionCtrl.text.trim().isEmpty) {
+      _mostrarMensaje('Escribe la dirección exacta');
       return;
     }
     if (_descripcionCtrl.text.trim().isEmpty) {
@@ -113,13 +135,21 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
 
     setState(() => _enviando = true);
     try {
+      // Orden estable (texto, imagen, audio, video) sin importar el
+      // orden en que se hayan marcado los chips.
+      final tiposOrdenados = TipoSolicitud.values
+          .where((t) => _tipos.contains(t))
+          .toList();
       await SolicitudService.crearSolicitud(
         clienteAlias: widget.usuario.alias,
-        tipo: _tipo,
+        tipos: tiposOrdenados,
+        categoria: _categoria,
         descripcion: _descripcionCtrl.text,
         localidad: _localidad!,
+        direccion: _direccionCtrl.text,
       );
       _descripcionCtrl.clear();
+      _direccionCtrl.clear();
       await _cargarSolicitudActiva();
     } on SolicitudException catch (e) {
       _mostrarMensaje(e.mensaje);
@@ -164,6 +194,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         VerRespuestaScreen(
           solicitudId: solicitud!.id!,
           clienteAlias: widget.usuario.alias,
+          tipos: solicitud.tipos,
         ),
       ),
     );
@@ -221,11 +252,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       onVerRespuesta: _verRespuesta,
                     )
                   : _PanelFormulario(
-                      tipo: _tipo,
+                      categoria: _categoria,
+                      tipos: _tipos,
                       localidad: _localidad,
                       descripcionCtrl: _descripcionCtrl,
+                      direccionCtrl: _direccionCtrl,
                       cargando: _enviando,
-                      onTipoChanged: (t) => setState(() => _tipo = t),
+                      onCategoriaChanged: (c) =>
+                          setState(() => _categoria = c),
+                      onTipoToggle: _alternarTipo,
                       onLocalidadChanged: (l) =>
                           setState(() => _localidad = l),
                       onEnviar: _enviarSolicitud,
@@ -238,31 +273,64 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
 }
 
 class _PanelFormulario extends StatelessWidget {
-  final TipoSolicitud tipo;
+  final Categoria categoria;
+  final Set<TipoSolicitud> tipos;
   final String? localidad;
   final TextEditingController descripcionCtrl;
+  final TextEditingController direccionCtrl;
   final bool cargando;
-  final ValueChanged<TipoSolicitud> onTipoChanged;
+  final ValueChanged<Categoria> onCategoriaChanged;
+  final ValueChanged<TipoSolicitud> onTipoToggle;
   final ValueChanged<String?> onLocalidadChanged;
   final VoidCallback onEnviar;
 
   const _PanelFormulario({
-    required this.tipo,
+    required this.categoria,
+    required this.tipos,
     required this.localidad,
     required this.descripcionCtrl,
+    required this.direccionCtrl,
     required this.cargando,
-    required this.onTipoChanged,
+    required this.onCategoriaChanged,
+    required this.onTipoToggle,
     required this.onLocalidadChanged,
     required this.onEnviar,
   });
 
   @override
   Widget build(BuildContext context) {
+    final valorTotal = calcularValorTotal(categoria, tipos);
+
     return MapBottomPanel(
       child: SingleChildScrollView(
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            '¿Para qué es tu solicitud?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: Categoria.values.map((c) {
+              final esUltimo = c == Categoria.values.last;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: esUltimo ? 0 : 8),
+                  child: _CategoriaChip(
+                    label: c.etiqueta,
+                    seleccionado: categoria == c,
+                    onTap: () => onCategoriaChanged(c),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
           const Text(
             '¿Qué necesitas solicitar?',
             style: TextStyle(
@@ -273,31 +341,25 @@ class _PanelFormulario extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Elige si el colaborador debe traerte texto (un informe '
-            'escrito) o una imagen del lugar.',
+            'Puedes elegir varios (ej. imagen y audio a la vez).',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: TipoSolicitud.values.map((t) {
+              return SizedBox(
+                width: (MediaQuery.of(context).size.width - 40 - 10) / 2,
                 child: _TipoChip(
-                  label: 'Texto',
-                  icon: Icons.description_outlined,
-                  seleccionado: tipo == TipoSolicitud.texto,
-                  onTap: () => onTipoChanged(TipoSolicitud.texto),
+                  label: t.etiqueta,
+                  icon: _iconoDeTipo(t),
+                  precio: formatearPesos(precioDe(categoria, t)),
+                  seleccionado: tipos.contains(t),
+                  onTap: () => onTipoToggle(t),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _TipoChip(
-                  label: 'Imagen',
-                  icon: Icons.image_outlined,
-                  seleccionado: tipo == TipoSolicitud.imagen,
-                  onTap: () => onTipoChanged(TipoSolicitud.imagen),
-                ),
-              ),
-            ],
+              );
+            }).toList(),
           ),
           const SizedBox(height: 14),
           TextField(
@@ -325,6 +387,40 @@ class _PanelFormulario extends StatelessWidget {
                 .toList(),
             onChanged: onLocalidadChanged,
           ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: direccionCtrl,
+            style: const TextStyle(color: AppColors.textPrimary),
+            decoration: const InputDecoration(
+              labelText: 'Dirección exacta',
+              helperText: 'Calle/carrera y número donde debe ir el colaborador',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.sell_outlined, color: AppColors.accent, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Valor de referencia (ficticio): ${formatearPesos(valorTotal)}',
+                    style: const TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 18),
           PrimaryButton(
             label: 'ENVIAR SOLICITUD',
@@ -335,6 +431,19 @@ class _PanelFormulario extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  IconData _iconoDeTipo(TipoSolicitud t) {
+    switch (t) {
+      case TipoSolicitud.texto:
+        return Icons.description_outlined;
+      case TipoSolicitud.imagen:
+        return Icons.image_outlined;
+      case TipoSolicitud.audio:
+        return Icons.mic_outlined;
+      case TipoSolicitud.video:
+        return Icons.videocam_outlined;
+    }
   }
 }
 
@@ -411,12 +520,20 @@ class _PanelSeguimiento extends StatelessWidget {
           ),
           const Divider(height: 28, color: AppColors.border),
           SolicitudInfoRow(
-              icono: Icons.category_outlined,
-              texto: solicitud.tipo.etiqueta),
+              icono: Icons.category_outlined, texto: solicitud.categoria.etiqueta),
+          SolicitudInfoRow(
+              icono: Icons.checklist_outlined, texto: solicitud.tiposEtiqueta),
           SolicitudInfoRow(
               icono: Icons.place_outlined, texto: solicitud.localidad),
+          if (solicitud.direccion.isNotEmpty)
+            SolicitudInfoRow(
+                icono: Icons.location_on_outlined, texto: solicitud.direccion),
           SolicitudInfoRow(
               icono: Icons.notes_outlined, texto: solicitud.descripcion),
+          SolicitudInfoRow(
+              icono: Icons.sell_outlined,
+              texto:
+                  'Valor de referencia (ficticio): ${formatearPesos(solicitud.valorTotal)}'),
           const SizedBox(height: 16),
           if (tieneRespuesta)
             PrimaryButton(
@@ -434,15 +551,59 @@ class _PanelSeguimiento extends StatelessWidget {
   }
 }
 
+class _CategoriaChip extends StatelessWidget {
+  final String label;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  const _CategoriaChip({
+    required this.label,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: seleccionado
+              ? AppColors.accent.withOpacity(0.15)
+              : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: seleccionado ? AppColors.accent : AppColors.border,
+            width: seleccionado ? 1.4 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: seleccionado ? AppColors.accent : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TipoChip extends StatelessWidget {
   final String label;
   final IconData icon;
+  final String precio;
   final bool seleccionado;
   final VoidCallback onTap;
 
   const _TipoChip({
     required this.label,
     required this.icon,
+    required this.precio,
     required this.seleccionado,
     required this.onTap,
   });
@@ -453,7 +614,7 @@ class _TipoChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: seleccionado
               ? AppColors.accent.withOpacity(0.15)
@@ -466,19 +627,25 @@ class _TipoChip extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon,
-                color: seleccionado
-                    ? AppColors.accent
-                    : AppColors.textSecondary),
+            Icon(
+              seleccionado ? Icons.check_circle : icon,
+              color: seleccionado ? AppColors.accent : AppColors.textSecondary,
+            ),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                color: seleccionado
-                    ? AppColors.accent
-                    : AppColors.textSecondary,
+                color: seleccionado ? AppColors.accent : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              precio,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 10.5,
               ),
             ),
           ],

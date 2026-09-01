@@ -6,8 +6,9 @@ const ubicaciones = require('./ubicaciones');
 
 const app = express();
 app.use(cors());
-// Límite alto porque una respuesta con foto viaja como base64 en el body.
-app.use(express.json({ limit: '8mb' }));
+// Límite alto porque una respuesta puede traer foto/audio/video en
+// base64 dentro del body (el video es lo más pesado).
+app.use(express.json({ limit: '60mb' }));
 
 const PUERTO = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY;
@@ -20,19 +21,26 @@ function requiereApiKey(req, res, next) {
   next();
 }
 
-const TIPOS_VALIDOS = ['texto', 'imagen'];
+const TIPOS_VALIDOS = ['texto', 'imagen', 'audio', 'video'];
+const CATEGORIAS_VALIDAS = ['personal', 'comercial', 'industrial'];
 
 app.post('/api/solicitudes', requiereApiKey, (req, res) => {
-  const { clienteAlias, tipo, descripcion, localidad, latitud, longitud } = req.body;
+  const { clienteAlias, tipos, categoria, valorTotal, descripcion, localidad, direccion, latitud, longitud } = req.body;
 
   if (!clienteAlias || typeof clienteAlias !== 'string') {
     return res.status(400).json({ ok: false, error: 'clienteAlias es requerido' });
   }
-  if (!TIPOS_VALIDOS.includes(tipo)) {
-    return res.status(400).json({ ok: false, error: 'tipo inválido' });
+  if (!Array.isArray(tipos) || tipos.length === 0 || !tipos.every((t) => TIPOS_VALIDOS.includes(t))) {
+    return res.status(400).json({ ok: false, error: 'tipos inválidos: elige al menos uno (texto, imagen, audio, video)' });
   }
-  if (!descripcion || !localidad) {
-    return res.status(400).json({ ok: false, error: 'descripcion y localidad son requeridos' });
+  if (!CATEGORIAS_VALIDAS.includes(categoria)) {
+    return res.status(400).json({ ok: false, error: 'categoria inválida' });
+  }
+  if (typeof valorTotal !== 'number' || valorTotal < 0) {
+    return res.status(400).json({ ok: false, error: 'valorTotal inválido' });
+  }
+  if (!descripcion || !localidad || !direccion) {
+    return res.status(400).json({ ok: false, error: 'descripcion, localidad y direccion son requeridos' });
   }
   if (typeof latitud !== 'number' || typeof longitud !== 'number') {
     return res.status(400).json({ ok: false, error: 'latitud/longitud inválidas' });
@@ -46,7 +54,7 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
       .json({ ok: false, error: 'Ya tienes una solicitud activa', solicitud: activa });
   }
 
-  const solicitud = db.crearSolicitud({ clienteAlias, tipo, descripcion, localidad, latitud, longitud });
+  const solicitud = db.crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, descripcion, localidad, direccion, latitud, longitud });
   res.status(201).json({ ok: true, solicitud });
 });
 
@@ -87,20 +95,31 @@ app.post('/api/solicitudes/:id/aceptar', requiereApiKey, (req, res) => {
   res.json({ ok: true, solicitud });
 });
 
-// El colaborador envía su respuesta (texto o imagen) y con eso mismo
-// queda completada la solicitud.
+// El colaborador envía su respuesta (uno o varios de: texto, imagen,
+// audio, video) y con eso mismo queda completada la solicitud. Debe
+// traer contenido para CADA tipo que se pidió originalmente.
 app.post('/api/solicitudes/:id/responder', requiereApiKey, (req, res) => {
   const id = Number(req.params.id);
-  const { colaboradorAlias, texto, imagenBase64 } = req.body;
+  const { colaboradorAlias, texto, imagenBase64, audioBase64, videoBase64 } = req.body;
 
   if (!colaboradorAlias) {
     return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
   }
-  if (!texto && !imagenBase64) {
-    return res.status(400).json({ ok: false, error: 'Debes enviar texto o una imagen' });
+
+  const solicitudExistente = db.obtenerPorId(id);
+  if (!solicitudExistente) {
+    return res.status(404).json({ ok: false, error: 'Solicitud no encontrada' });
+  }
+  const contenidoPorTipo = { texto, imagen: imagenBase64, audio: audioBase64, video: videoBase64 };
+  const faltantes = solicitudExistente.tipos.filter((t) => !contenidoPorTipo[t]);
+  if (faltantes.length > 0) {
+    return res.status(400).json({
+      ok: false,
+      error: `Falta responder: ${faltantes.join(', ')}`,
+    });
   }
 
-  const solicitud = db.responderSolicitud(id, colaboradorAlias, { texto, imagenBase64 });
+  const solicitud = db.responderSolicitud(id, colaboradorAlias, { texto, imagenBase64, audioBase64, videoBase64 });
   if (!solicitud) {
     return res
       .status(409)

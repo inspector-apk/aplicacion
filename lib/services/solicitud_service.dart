@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/backend_config.dart';
 import '../core/bogota_localidades.dart';
+import '../core/precios.dart';
 import '../models/solicitud.dart';
 
 class SolicitudException implements Exception {
@@ -14,19 +15,27 @@ class SolicitudException implements Exception {
 
 /// Contenido de una respuesta, obtenido una única vez. No se guarda en
 /// ningún archivo ni base de datos local — vive solo en memoria
-/// mientras la pantalla que la muestra está abierta.
+/// mientras la pantalla que la muestra está abierta. Puede traer varios
+/// campos a la vez si la solicitud pedía varios tipos (ej. texto + foto).
 class RespuestaSolicitud {
-  final TipoSolicitud tipo;
   final String? texto;
   final String? imagenBase64;
+  final String? audioBase64;
+  final String? videoBase64;
 
-  const RespuestaSolicitud({required this.tipo, this.texto, this.imagenBase64});
+  const RespuestaSolicitud({
+    this.texto,
+    this.imagenBase64,
+    this.audioBase64,
+    this.videoBase64,
+  });
 
   factory RespuestaSolicitud.fromJson(Map<String, dynamic> json) {
     return RespuestaSolicitud(
-      tipo: TipoSolicitudX.fromValor(json['tipo'] as String),
       texto: json['texto'] as String?,
       imagenBase64: json['imagenBase64'] as String?,
+      audioBase64: json['audioBase64'] as String?,
+      videoBase64: json['videoBase64'] as String?,
     );
   }
 }
@@ -51,11 +60,14 @@ class SolicitudService {
 
   static Future<Solicitud> crearSolicitud({
     required String clienteAlias,
-    required TipoSolicitud tipo,
+    required List<TipoSolicitud> tipos,
+    required Categoria categoria,
     required String descripcion,
     required String localidad,
+    required String direccion,
   }) async {
     final centro = kLocalidadesBogota[localidad] ?? kBogotaCenter;
+    final valorTotal = calcularValorTotal(categoria, tipos);
 
     final respuesta = await http
         .post(
@@ -63,9 +75,12 @@ class SolicitudService {
           headers: _headers,
           body: jsonEncode({
             'clienteAlias': clienteAlias,
-            'tipo': tipo.valor,
+            'tipos': tipos.map((t) => t.valor).toList(),
+            'categoria': categoria.valor,
+            'valorTotal': valorTotal,
             'descripcion': descripcion.trim(),
             'localidad': localidad,
+            'direccion': direccion.trim(),
             'latitud': centro.latitude,
             'longitud': centro.longitude,
           }),
@@ -153,13 +168,17 @@ class SolicitudService {
     }
   }
 
-  /// El colaborador envía su respuesta (texto o imagen en base64) y con
-  /// eso mismo queda completada la solicitud.
+  /// El colaborador envía su respuesta y con eso mismo queda completada
+  /// la solicitud. Debe incluir contenido para cada tipo que se pidió
+  /// (ej. si la solicitud pedía texto + audio, hay que mandar ambos).
+  /// El timeout es más largo porque puede incluir audio/video en base64.
   static Future<void> responderSolicitud({
     required int solicitudId,
     required String colaboradorAlias,
     String? texto,
     String? imagenBase64,
+    String? audioBase64,
+    String? videoBase64,
   }) async {
     final respuesta = await http
         .post(
@@ -169,9 +188,11 @@ class SolicitudService {
             'colaboradorAlias': colaboradorAlias,
             if (texto != null) 'texto': texto,
             if (imagenBase64 != null) 'imagenBase64': imagenBase64,
+            if (audioBase64 != null) 'audioBase64': audioBase64,
+            if (videoBase64 != null) 'videoBase64': videoBase64,
           }),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 90));
 
     final cuerpo = _decodificar(respuesta);
     if (cuerpo['ok'] != true) {
@@ -194,7 +215,7 @@ class SolicitudService {
               {'clienteAlias': clienteAlias}),
           headers: _headers,
         )
-        .timeout(const Duration(seconds: 20));
+        .timeout(const Duration(seconds: 60));
 
     final cuerpo = _decodificar(respuesta);
     if (cuerpo['ok'] != true) {

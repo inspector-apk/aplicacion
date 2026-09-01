@@ -363,8 +363,12 @@ class _SolicitudActivaCard extends StatelessWidget {
             ],
           ),
           const Divider(height: 22, color: AppColors.border),
-          SolicitudInfoRow(icono: Icons.category_outlined, texto: s.tipo.etiqueta),
+          SolicitudInfoRow(icono: Icons.category_outlined, texto: s.categoria.etiqueta),
+          SolicitudInfoRow(icono: Icons.checklist_outlined, texto: s.tiposEtiqueta),
           SolicitudInfoRow(icono: Icons.place_outlined, texto: s.localidad),
+          if (s.direccion.isNotEmpty)
+            SolicitudInfoRow(
+                icono: Icons.location_on_outlined, texto: s.direccion),
           SolicitudInfoRow(icono: Icons.notes_outlined, texto: s.descripcion),
         ],
       ),

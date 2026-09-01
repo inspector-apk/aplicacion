@@ -141,12 +141,40 @@ instales la app.
 ## Solicitudes y mapa
 
 - **Cliente pide, Colaborador atiende** (como pasajero/conductor en
-  Uber): el Cliente llena el formulario (texto o imagen, descripción,
-  localidad) y la solicitud queda `pendiente`; **todos** los Colaboradores
-  la ven en su lista de "Solicitudes disponibles"; el primero que la
-  `acepta` se la gana (transacción atómica en el backend) y desaparece
-  para los demás; al terminar la marca como `completada`. El Cliente ve
-  el estado en su pantalla principal y en su perfil.
+  Uber): el Cliente llena el formulario (categoría, uno o varios tipos de
+  contenido, descripción, localidad) y la solicitud queda `pendiente`;
+  **todos** los Colaboradores la ven en su lista de "Solicitudes
+  disponibles"; el primero que la `acepta` se la gana (transacción
+  atómica en el backend) y desaparece para los demás; al terminar la
+  marca como `completada`. El Cliente ve el estado en su pantalla
+  principal y en su perfil.
+- **Dirección exacta**: además de la localidad (el área general de
+  Bogotá), el Cliente escribe la dirección exacta (calle/carrera y
+  número) donde el Colaborador debe ir — campo `direccion` en el
+  formulario y en el modelo, visible también para el Colaborador al
+  responder y en el panel de administrador.
+- **Categoría y tipos múltiples**: la solicitud tiene una categoría
+  (Personal/Comercial/Industrial, `lib/models/solicitud.dart`) y uno o
+  varios tipos de contenido a la vez (texto, imagen, audio, video —
+  `_PanelFormulario` en `cliente_home_screen.dart` usa chips de
+  selección múltiple, no exclusiva). Cada tipo tiene un **valor de
+  referencia FICTICIO** (no hay pasarela de pagos ni cobro real) que
+  cambia según la categoría — tabla completa en
+  `lib/core/precios.dart`. El Colaborador, al responder
+  (`responder_solicitud_screen.dart`), tiene que entregar contenido para
+  **cada** tipo pedido (ej. si pidieron texto + audio, tiene que grabar
+  el audio Y escribir el texto) antes de poder enviar; el backend valida
+  eso mismo del lado del servidor.
+- **Audio y video como respuesta**: el Colaborador graba una nota de voz
+  en el momento (paquete `record`) o graba/adjunta un video (`image_picker`,
+  máx. 2 minutos cada uno, para no generar archivos demasiado pesados en
+  base64). El Cliente los reproduce con `audioplayers` (audio, directo
+  desde los bytes en memoria) y `video_player` (video — este sí necesita
+  un archivo para reproducirse; se escribe a un archivo TEMPORAL que se
+  borra automáticamente al cerrar la pantalla, nunca queda guardado).
+  Sigue aplicando la misma regla de "una sola vez": todo el contenido de
+  la respuesta (de cualquier tipo) se borra del servidor en el momento
+  en que el Cliente lo abre.
 - Las solicitudes **no viven en SQLite local**: viven en el backend
   compartido (`backend/`, Node.js + Express + better-sqlite3), porque
   tienen que poder verse entre distintos dispositivos. Se identifica a
@@ -297,8 +325,8 @@ flutter doctor
    flutter pub get
    ```
 
-4. **Agrega los permisos de ubicación, internet y cámara** en
-   `android/app/src/main/AndroidManifest.xml` — no vienen en el
+4. **Agrega los permisos de ubicación, internet, cámara y micrófono**
+   en `android/app/src/main/AndroidManifest.xml` — no vienen en el
    `flutter create` por defecto, hay que añadirlos a mano justo debajo
    de la etiqueta `<manifest ...>` de apertura:
 
@@ -307,10 +335,13 @@ flutter doctor
    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
    <uses-permission android:name="android.permission.CAMERA"/>
+   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
    ```
 
    La cámara la usa `image_picker` para que el Colaborador pueda tomar
-   una foto al responder una solicitud de tipo imagen.
+   fotos y videos al responder una solicitud; el micrófono lo usa
+   `record` para las notas de audio (y también hace falta para grabar
+   video con sonido).
 
 5. Genera el ícono de la app (launcher / Descargas) a partir de
    `assets/icon/app_icon.png` — este paso escribe los mipmaps de Android
@@ -371,6 +402,8 @@ Pasos una vez tengas acceso a macOS:
    <string>Inspector necesita la cámara para que los colaboradores tomen fotos al responder solicitudes.</string>
    <key>NSPhotoLibraryUsageDescription</key>
    <string>Inspector necesita acceso a tus fotos para adjuntar imágenes al responder solicitudes.</string>
+   <key>NSMicrophoneUsageDescription</key>
+   <string>Inspector necesita el micrófono para que los colaboradores graben notas de audio o video al responder solicitudes.</string>
    ```
 
 4. Abre `ios/Runner.xcworkspace` en Xcode y configura un **Team** de

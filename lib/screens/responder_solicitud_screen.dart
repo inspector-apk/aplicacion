@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:video_player/video_player.dart';
 
 import '../core/app_colors.dart';
 import '../models/solicitud.dart';
@@ -15,9 +20,15 @@ import '../widgets/app_buttons.dart';
 /// explícitamente que la foto es real antes de dejarlo enviarla.
 const int _kUmbralConfirmacionIA = 60;
 
-/// Pantalla donde el Colaborador responde una solicitud que aceptó:
-/// texto si la solicitud pedía texto, o una foto (galería o cámara) si
-/// pedía imagen. Al enviar, la solicitud queda completada.
+/// Duración máxima de audio/video que se puede adjuntar en una
+/// respuesta, para no generar archivos demasiado pesados (viajan en
+/// base64 dentro del cuerpo de la petición).
+const Duration _kDuracionMaximaMedia = Duration(minutes: 2);
+
+/// Pantalla donde el Colaborador responde una solicitud que aceptó: uno
+/// o varios de texto, foto, audio o video, según lo que haya pedido la
+/// solicitud. Al enviar (con contenido para TODO lo pedido), la
+/// solicitud queda completada.
 class ResponderSolicitudScreen extends StatefulWidget {
   final Solicitud solicitud;
   final Usuario usuario;
@@ -35,6 +46,9 @@ class ResponderSolicitudScreen extends StatefulWidget {
 class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
   final _textoCtrl = TextEditingController();
   File? _imagenSeleccionada;
+  File? _audioSeleccionado;
+  File? _videoSeleccionado;
+  VideoPlayerController? _controladorVideoPreview;
   bool _enviando = false;
   String? _error;
 
@@ -43,7 +57,14 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
   String? _errorAnalisisIA;
   bool _confirmoFotoReal = false;
 
-  bool get _esTexto => widget.solicitud.tipo == TipoSolicitud.texto;
+  final _grabador = AudioRecorder();
+  final _reproductorAudioPreview = AudioPlayer();
+  bool _grabando = false;
+  bool _reproduciendoPreviewAudio = false;
+  Duration _duracionGrabada = Duration.zero;
+  Timer? _cronometroGrabacion;
+
+  List<TipoSolicitud> get _tipos => widget.solicitud.tipos;
 
   bool get _requiereConfirmacionIA =>
       _resultadoIA != null && _resultadoIA!.iaPorcentaje >= _kUmbralConfirmacionIA;
@@ -51,8 +72,14 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
   @override
   void dispose() {
     _textoCtrl.dispose();
+    _cronometroGrabacion?.cancel();
+    _grabador.dispose();
+    _reproductorAudioPreview.dispose();
+    _controladorVideoPreview?.dispose();
     super.dispose();
   }
+
+  // ---------- Imagen ----------
 
   Future<void> _elegirImagen(ImageSource origen) async {
     final picker = ImagePicker();
@@ -95,34 +122,129 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
     }
   }
 
+  // ---------- Audio ----------
+
+  Future<void> _alternarGrabacion() async {
+    if (_grabando) {
+      final ruta = await _grabador.stop();
+      _cronometroGrabacion?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _grabando = false;
+        if (ruta != null) _audioSeleccionado = File(ruta);
+      });
+      return;
+    }
+
+    if (!await _grabador.hasPermission()) {
+      setState(() => _error = 'Necesitas dar permiso de micrófono para grabar audio');
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    final ruta =
+        '${dir.path}/respuesta_audio_${DateTime.now().microsecondsSinceEpoch}.m4a';
+    await _grabador.start(const RecordConfig(), path: ruta);
+    setState(() {
+      _grabando = true;
+      _audioSeleccionado = null;
+      _duracionGrabada = Duration.zero;
+    });
+    _cronometroGrabacion = Timer.periodic(const Duration(seconds: 1), (_) async {
+      final nueva = _duracionGrabada + const Duration(seconds: 1);
+      if (nueva >= _kDuracionMaximaMedia) {
+        await _alternarGrabacion(); // se autodetiene al llegar al máximo
+        return;
+      }
+      if (mounted) setState(() => _duracionGrabada = nueva);
+    });
+  }
+
+  Future<void> _reproducirPreviewAudio() async {
+    final archivo = _audioSeleccionado;
+    if (archivo == null) return;
+    if (_reproduciendoPreviewAudio) {
+      await _reproductorAudioPreview.pause();
+    } else {
+      await _reproductorAudioPreview.play(DeviceFileSource(archivo.path));
+      _reproductorAudioPreview.onPlayerComplete.first.then((_) {
+        if (mounted) setState(() => _reproduciendoPreviewAudio = false);
+      });
+    }
+    if (mounted) {
+      setState(() => _reproduciendoPreviewAudio = !_reproduciendoPreviewAudio);
+    }
+  }
+
+  // ---------- Video ----------
+
+  Future<void> _elegirVideo(ImageSource origen) async {
+    final picker = ImagePicker();
+    final archivo = await picker.pickVideo(
+      source: origen,
+      maxDuration: _kDuracionMaximaMedia,
+    );
+    if (archivo == null) return;
+    final controlador = VideoPlayerController.file(File(archivo.path));
+    await controlador.initialize();
+    if (!mounted) return;
+    setState(() {
+      _controladorVideoPreview?.dispose();
+      _videoSeleccionado = File(archivo.path);
+      _controladorVideoPreview = controlador;
+    });
+  }
+
+  // ---------- Envío ----------
+
   Future<void> _enviar() async {
     setState(() => _error = null);
 
+    if (_analizandoIA) {
+      setState(() => _error = 'Espera a que termine el análisis de la foto');
+      return;
+    }
+
     String? texto;
     String? imagenBase64;
+    String? audioBase64;
+    String? videoBase64;
 
-    if (_esTexto) {
-      if (_textoCtrl.text.trim().isEmpty) {
-        setState(() => _error = 'Escribe tu respuesta');
-        return;
+    for (final t in _tipos) {
+      switch (t) {
+        case TipoSolicitud.texto:
+          if (_textoCtrl.text.trim().isEmpty) {
+            setState(() => _error = 'Escribe tu respuesta de texto');
+            return;
+          }
+          texto = _textoCtrl.text.trim();
+          break;
+        case TipoSolicitud.imagen:
+          if (_imagenSeleccionada == null) {
+            setState(() => _error = 'Elige o toma una foto');
+            return;
+          }
+          if (_requiereConfirmacionIA && !_confirmoFotoReal) {
+            setState(() => _error =
+                'Esta foto parece generada por IA: confirma que es real antes de enviarla');
+            return;
+          }
+          imagenBase64 = base64Encode(await _imagenSeleccionada!.readAsBytes());
+          break;
+        case TipoSolicitud.audio:
+          if (_audioSeleccionado == null) {
+            setState(() => _error = 'Graba una nota de audio');
+            return;
+          }
+          audioBase64 = base64Encode(await _audioSeleccionado!.readAsBytes());
+          break;
+        case TipoSolicitud.video:
+          if (_videoSeleccionado == null) {
+            setState(() => _error = 'Graba o adjunta un video');
+            return;
+          }
+          videoBase64 = base64Encode(await _videoSeleccionado!.readAsBytes());
+          break;
       }
-      texto = _textoCtrl.text.trim();
-    } else {
-      if (_imagenSeleccionada == null) {
-        setState(() => _error = 'Elige o toma una foto');
-        return;
-      }
-      if (_analizandoIA) {
-        setState(() => _error = 'Espera a que termine el análisis de la foto');
-        return;
-      }
-      if (_requiereConfirmacionIA && !_confirmoFotoReal) {
-        setState(() => _error =
-            'Esta foto parece generada por IA: confirma que es real antes de enviarla');
-        return;
-      }
-      final bytes = await _imagenSeleccionada!.readAsBytes();
-      imagenBase64 = base64Encode(bytes);
     }
 
     setState(() => _enviando = true);
@@ -132,6 +254,8 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
         colaboradorAlias: widget.usuario.alias,
         texto: texto,
         imagenBase64: imagenBase64,
+        audioBase64: audioBase64,
+        videoBase64: videoBase64,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -163,95 +287,14 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              widget.solicitud.localidad,
+              widget.solicitud.direccion.isNotEmpty
+                  ? '${widget.solicitud.localidad} · ${widget.solicitud.direccion}'
+                  : widget.solicitud.localidad,
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
-            const SizedBox(height: 24),
-            if (_esTexto) ...[
-              const Text(
-                'Escribe tu respuesta',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _textoCtrl,
-                maxLines: 6,
-                style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(
-                  labelText: 'Tu respuesta para el cliente',
-                  helperText: 'El cliente solo podrá leer esto una vez',
-                ),
-              ),
-            ] else ...[
-              const Text(
-                'Adjunta una foto',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'El cliente solo podrá ver esta foto una vez',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-              const SizedBox(height: 14),
-              if (_imagenSeleccionada != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.file(
-                    _imagenSeleccionada!,
-                    height: 220,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.image_outlined,
-                      color: AppColors.textMuted, size: 40),
-                ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlineActionButton(
-                      label: 'CÁMARA',
-                      onPressed: () => _elegirImagen(ImageSource.camera),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlineActionButton(
-                      label: 'GALERÍA',
-                      onPressed: () => _elegirImagen(ImageSource.gallery),
-                    ),
-                  ),
-                ],
-              ),
-              if (_imagenSeleccionada != null) ...[
-                const SizedBox(height: 14),
-                _PanelDeteccionIA(
-                  analizando: _analizandoIA,
-                  resultado: _resultadoIA,
-                  error: _errorAnalisisIA,
-                  confirmoFotoReal: _confirmoFotoReal,
-                  onConfirmarChanged: (v) =>
-                      setState(() => _confirmoFotoReal = v),
-                ),
-              ],
+            for (final t in _tipos) ...[
+              const SizedBox(height: 24),
+              _seccionPara(t),
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
@@ -262,11 +305,268 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
             PrimaryButton(
               label: 'ENVIAR RESPUESTA',
               isLoading: _enviando,
-              onPressed: _analizandoIA ? null : _enviar,
+              onPressed: _analizandoIA || _grabando ? null : _enviar,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _seccionPara(TipoSolicitud t) {
+    switch (t) {
+      case TipoSolicitud.texto:
+        return _seccionTexto();
+      case TipoSolicitud.imagen:
+        return _seccionImagen();
+      case TipoSolicitud.audio:
+        return _seccionAudio();
+      case TipoSolicitud.video:
+        return _seccionVideo();
+    }
+  }
+
+  Widget _seccionTexto() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Escribe tu respuesta',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _textoCtrl,
+          maxLines: 6,
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Tu respuesta para el cliente',
+            helperText: 'El cliente solo podrá leer esto una vez',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seccionImagen() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Adjunta una foto',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'El cliente solo podrá ver esta foto una vez',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        if (_imagenSeleccionada != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.file(
+              _imagenSeleccionada!,
+              height: 220,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          )
+        else
+          _placeholder(Icons.image_outlined),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: OutlineActionButton(
+                label: 'CÁMARA',
+                onPressed: () => _elegirImagen(ImageSource.camera),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlineActionButton(
+                label: 'GALERÍA',
+                onPressed: () => _elegirImagen(ImageSource.gallery),
+              ),
+            ),
+          ],
+        ),
+        if (_imagenSeleccionada != null) ...[
+          const SizedBox(height: 14),
+          _PanelDeteccionIA(
+            analizando: _analizandoIA,
+            resultado: _resultadoIA,
+            error: _errorAnalisisIA,
+            confirmoFotoReal: _confirmoFotoReal,
+            onConfirmarChanged: (v) => setState(() => _confirmoFotoReal = v),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _seccionAudio() {
+    final minutos = _duracionGrabada.inMinutes.toString().padLeft(2, '0');
+    final segundos = (_duracionGrabada.inSeconds % 60).toString().padLeft(2, '0');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Graba una nota de audio',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'El cliente solo podrá escucharla una vez · máx. '
+          '${_kDuracionMaximaMedia.inMinutes} min',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: _grabando ? AppColors.error : AppColors.border),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: _alternarGrabacion,
+                icon: Icon(
+                  _grabando ? Icons.stop_circle : Icons.fiber_manual_record,
+                  color: AppColors.error,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_grabando)
+                Text('Grabando... $minutos:$segundos',
+                    style: const TextStyle(
+                        color: AppColors.error, fontWeight: FontWeight.w600))
+              else if (_audioSeleccionado != null)
+                Expanded(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: _reproducirPreviewAudio,
+                        icon: Icon(
+                          _reproduciendoPreviewAudio
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_fill,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                      const Text('Audio grabado — listo para enviar',
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 12.5)),
+                    ],
+                  ),
+                )
+              else
+                const Expanded(
+                  child: Text('Toca para empezar a grabar',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12.5)),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seccionVideo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Graba o adjunta un video',
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'El cliente solo podrá verlo una vez · máx. '
+          '${_kDuracionMaximaMedia.inMinutes} min',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        if (_controladorVideoPreview != null &&
+            _controladorVideoPreview!.value.isInitialized)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: _controladorVideoPreview!.value.aspectRatio,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  VideoPlayer(_controladorVideoPreview!),
+                  IconButton(
+                    iconSize: 48,
+                    color: Colors.white,
+                    icon: Icon(_controladorVideoPreview!.value.isPlaying
+                        ? Icons.pause_circle_filled
+                        : Icons.play_circle_fill),
+                    onPressed: () {
+                      setState(() {
+                        _controladorVideoPreview!.value.isPlaying
+                            ? _controladorVideoPreview!.pause()
+                            : _controladorVideoPreview!.play();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          _placeholder(Icons.videocam_outlined),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: OutlineActionButton(
+                label: 'GRABAR',
+                onPressed: () => _elegirVideo(ImageSource.camera),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlineActionButton(
+                label: 'GALERÍA',
+                onPressed: () => _elegirVideo(ImageSource.gallery),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _placeholder(IconData icon) {
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, color: AppColors.textMuted, size: 40),
     );
   }
 }

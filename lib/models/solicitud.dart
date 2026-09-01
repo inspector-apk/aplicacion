@@ -1,11 +1,46 @@
-enum TipoSolicitud { texto, imagen }
+enum TipoSolicitud { texto, imagen, audio, video }
 
 extension TipoSolicitudX on TipoSolicitud {
   String get valor => name;
-  String get etiqueta => this == TipoSolicitud.texto ? 'Texto' : 'Imagen';
+
+  String get etiqueta {
+    switch (this) {
+      case TipoSolicitud.texto:
+        return 'Texto';
+      case TipoSolicitud.imagen:
+        return 'Imagen';
+      case TipoSolicitud.audio:
+        return 'Audio';
+      case TipoSolicitud.video:
+        return 'Video';
+    }
+  }
 
   static TipoSolicitud fromValor(String valor) {
     return TipoSolicitud.values.firstWhere((t) => t.valor == valor);
+  }
+}
+
+/// Categoría de la solicitud: cambia el valor (ficticio) que se muestra
+/// por cada tipo de contenido pedido.
+enum Categoria { personal, comercial, industrial }
+
+extension CategoriaX on Categoria {
+  String get valor => name;
+
+  String get etiqueta {
+    switch (this) {
+      case Categoria.personal:
+        return 'Personal';
+      case Categoria.comercial:
+        return 'Comercial';
+      case Categoria.industrial:
+        return 'Industrial';
+    }
+  }
+
+  static Categoria fromValor(String valor) {
+    return Categoria.values.firstWhere((c) => c.valor == valor);
   }
 }
 
@@ -42,9 +77,22 @@ class Solicitud {
   final int? id;
   final String clienteAlias;
   final String? colaboradorAlias;
-  final TipoSolicitud tipo;
+
+  /// Uno o más tipos de contenido pedidos (ej. texto + imagen).
+  final List<TipoSolicitud> tipos;
+  final Categoria categoria;
+
+  /// Valor ficticio (no es un cobro real) calculado a partir de la
+  /// categoría y los tipos pedidos — ver `lib/core/precios.dart`.
+  final int valorTotal;
+
   final String descripcion;
   final String localidad;
+
+  /// Dirección exacta (texto libre) escrita por el cliente, dentro de
+  /// la localidad elegida — para que el colaborador sepa a dónde ir.
+  final String direccion;
+
   final double latitud;
   final double longitud;
   final EstadoSolicitud estado;
@@ -61,9 +109,12 @@ class Solicitud {
     this.id,
     required this.clienteAlias,
     this.colaboradorAlias,
-    required this.tipo,
+    required this.tipos,
+    required this.categoria,
+    required this.valorTotal,
     required this.descripcion,
     required this.localidad,
+    this.direccion = '',
     required this.latitud,
     required this.longitud,
     required this.estado,
@@ -77,24 +128,39 @@ class Solicitud {
   bool get tieneRespuestaSinVer =>
       estado == EstadoSolicitud.completada && !respuestaVista;
 
+  String get tiposEtiqueta => tipos.map((t) => t.etiqueta).join(' + ');
+
   Map<String, Object?> toJson() {
     return {
       'clienteAlias': clienteAlias,
-      'tipo': tipo.valor,
+      'tipos': tipos.map((t) => t.valor).toList(),
+      'categoria': categoria.valor,
+      'valorTotal': valorTotal,
       'descripcion': descripcion,
       'localidad': localidad,
+      'direccion': direccion,
       'latitud': latitud,
       'longitud': longitud,
     };
   }
 
   factory Solicitud.fromJson(Map<String, dynamic> json) {
+    final tiposRaw = json['tipos'];
+    final tipos = tiposRaw is List
+        ? tiposRaw.map((t) => TipoSolicitudX.fromValor(t as String)).toList()
+        : [TipoSolicitudX.fromValor(json['tipo'] as String)]; // compatibilidad
+
     return Solicitud(
       id: json['id'] as int?,
       clienteAlias: json['cliente_alias'] as String,
       colaboradorAlias: json['colaborador_alias'] as String?,
-      tipo: TipoSolicitudX.fromValor(json['tipo'] as String),
+      tipos: tipos,
+      categoria: json['categoria'] != null
+          ? CategoriaX.fromValor(json['categoria'] as String)
+          : Categoria.personal,
+      valorTotal: (json['valor_total'] as num?)?.toInt() ?? 0,
       descripcion: json['descripcion'] as String,
+      direccion: json['direccion'] as String? ?? '',
       localidad: json['localidad'] as String,
       latitud: (json['latitud'] as num).toDouble(),
       longitud: (json['longitud'] as num).toDouble(),

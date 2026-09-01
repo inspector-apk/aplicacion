@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
+import '../core/precios.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
 import '../services/location_service.dart';
@@ -301,15 +302,20 @@ class _SolicitudCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SolicitudInfoRow(
-            icono: solicitud.tipo == TipoSolicitud.texto
-                ? Icons.description_outlined
-                : Icons.image_outlined,
-            texto: solicitud.tipo.etiqueta,
-          ),
+              icono: Icons.category_outlined, texto: solicitud.categoria.etiqueta),
+          SolicitudInfoRow(
+              icono: Icons.checklist_outlined, texto: solicitud.tiposEtiqueta),
           SolicitudInfoRow(
               icono: Icons.place_outlined, texto: solicitud.localidad),
+          if (solicitud.direccion.isNotEmpty)
+            SolicitudInfoRow(
+                icono: Icons.location_on_outlined, texto: solicitud.direccion),
           SolicitudInfoRow(
               icono: Icons.notes_outlined, texto: solicitud.descripcion),
+          SolicitudInfoRow(
+              icono: Icons.sell_outlined,
+              texto:
+                  'Valor de referencia (ficticio): ${formatearPesos(solicitud.valorTotal)}'),
           const SizedBox(height: 10),
           PrimaryButton(
             label: accionLabel,

@@ -93,14 +93,18 @@ Vuelve a compilar el APK/IPA para que tome estos valores.
 
 ## Endpoints
 
-Todos requieren el header `x-api-key` (excepto `/api/salud`).
+Todos requieren el header `x-api-key` (excepto `/api/salud`). El
+cuerpo de las peticiones admite hasta 60MB (una respuesta con video en
+base64 puede pesar bastante) — si tu proxy (nginx, etc.) tiene su
+propio límite de tamaño de body, revisa que también lo permita
+(`client_max_body_size 60m;` en nginx).
 
-- `POST /api/solicitudes` — crea una solicitud (`clienteAlias, tipo, descripcion, localidad, latitud, longitud`)
+- `POST /api/solicitudes` — crea una solicitud (`clienteAlias, tipos (array: texto/imagen/audio/video), categoria (personal/comercial/industrial), valorTotal, descripcion, localidad, latitud, longitud`)
 - `GET /api/solicitudes/pendientes` — todas las solicitudes en estado `pendiente`
 - `GET /api/solicitudes/activa?clienteAlias=...` — la solicitud "vigente" de un cliente: en curso, o completada con una respuesta que todavía no ha visto
 - `GET /api/solicitudes/en-curso?colaboradorAlias=...` — las solicitudes que un colaborador tiene aceptadas
 - `POST /api/solicitudes/:id/aceptar` (`colaboradorAlias`) — la acepta; si otro colaborador ya la tomó, responde `409`
-- `POST /api/solicitudes/:id/responder` (`colaboradorAlias`, y `texto` o `imagenBase64`) — envía la respuesta del colaborador y con eso completa la solicitud
+- `POST /api/solicitudes/:id/responder` (`colaboradorAlias`, y uno o varios de `texto`, `imagenBase64`, `audioBase64`, `videoBase64` según lo que haya pedido la solicitud) — envía la respuesta del colaborador y con eso completa la solicitud; si falta contenido para alguno de los tipos pedidos, responde `400`
 - `GET /api/solicitudes/:id/respuesta?clienteAlias=...` — entrega el contenido de la respuesta **una sola vez**: lo borra del servidor en el mismo momento en que se consulta con éxito; llamadas posteriores responden `409` ("ya fue vista")
 - `GET /api/solicitudes/historial?clienteAlias=...` — historial completo (cualquier estado) de un cliente, sin el contenido de las respuestas — solo metadatos
 - `POST /api/solicitudes/:id/cancelar` (`clienteAlias`) — el cliente cancela su propia solicitud pendiente
@@ -112,7 +116,8 @@ Todos requieren el header `x-api-key` (excepto `/api/salud`).
 
 ### Sobre la privacidad de las respuestas
 
-El contenido de una respuesta (`respuesta_texto` / `respuesta_imagen_base64`)
+El contenido de una respuesta (`respuesta_texto` / `respuesta_imagen_base64`
+/ `respuesta_audio_base64` / `respuesta_video_base64`)
 **nunca** se devuelve en ningún endpoint de lista (`pendientes`, `activa`,
 `en-curso`, `todas`, `historial`) — solo en `GET /api/solicitudes/:id/respuesta`,
 y solo si quien pregunta es el mismo `clienteAlias` dueño de la solicitud.

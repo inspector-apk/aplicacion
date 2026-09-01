@@ -23,11 +23,12 @@ jobs:
       - name: Generar el proyecto nativo de iOS
         run: flutter create --platforms=ios --org com.inspector --project-name inspector .
 
-      - name: Agregar permisos a Info.plist (ubicación, cámara, fotos)
+      - name: Agregar permisos a Info.plist (ubicación, cámara, fotos, micrófono)
         run: |
           plutil -insert NSLocationWhenInUseUsageDescription -string "Inspector usa tu ubicación para mostrarte el mapa y conectar solicitudes cercanas en Bogotá." ios/Runner/Info.plist
-          plutil -insert NSCameraUsageDescription -string "Inspector necesita la cámara para que los colaboradores tomen fotos al responder solicitudes." ios/Runner/Info.plist
-          plutil -insert NSPhotoLibraryUsageDescription -string "Inspector necesita acceso a tus fotos para adjuntar imágenes al responder solicitudes." ios/Runner/Info.plist
+          plutil -insert NSCameraUsageDescription -string "Inspector necesita la cámara para que los colaboradores tomen fotos y videos al responder solicitudes." ios/Runner/Info.plist
+          plutil -insert NSPhotoLibraryUsageDescription -string "Inspector necesita acceso a tus fotos para adjuntar imágenes y videos al responder solicitudes." ios/Runner/Info.plist
+          plutil -insert NSMicrophoneUsageDescription -string "Inspector necesita el micrófono para que los colaboradores graben notas de audio o video al responder solicitudes." ios/Runner/Info.plist
 
       - name: Permitir HTTP sin cifrar hacia el backend (ATS)
         run: |

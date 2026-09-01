@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
+import '../core/precios.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
 import '../services/admin_service.dart';
@@ -287,7 +288,7 @@ class _ListaSolicitudes extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '${s.tipo.etiqueta} · ${s.localidad}',
+                      '${s.tiposEtiqueta} · ${s.localidad}',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -311,6 +312,10 @@ class _ListaSolicitudes extends StatelessWidget {
               Text(s.descripcion,
                   style: const TextStyle(
                       color: AppColors.textSecondary, fontSize: 12.5)),
+              if (s.direccion.isNotEmpty)
+                Text(s.direccion,
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 11.5)),
               const SizedBox(height: 6),
               Text(
                 'Cliente: ${s.clienteAlias}'
@@ -320,6 +325,11 @@ class _ListaSolicitudes extends StatelessWidget {
               Text(
                 'Solicitado: ${s.fechaCreacion}'
                 '${s.respuestaFecha != null ? ' · Respondido: ${s.respuestaFecha}' : ''}',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+              Text(
+                '${s.categoria.etiqueta} · Valor de referencia (ficticio): '
+                '${formatearPesos(s.valorTotal)}',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
               ),
             ],
