@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -55,6 +57,28 @@ Marker buildPinMarker({
     height: 42,
     child: Icon(icon, color: color, size: 38),
   );
+}
+
+final _rngDecorativo = math.Random();
+
+/// Puntos de ambiente: NO representan colaboradores reales, son solo
+/// para que el mapa nunca se vea vacío (como Uber/Didi, que siempre
+/// muestran varios carros alrededor aunque ninguno esté cerca todavía).
+/// Se eligen una vez por pantalla (anclas fijas repartidas por Bogotá)
+/// y luego se les aplica una pequeña variación aleatoria cada vez que
+/// se piden, para dar sensación de movimiento.
+List<LatLng> anclasDecorativasColaboradores({int cantidad = 6}) {
+  final centros = kLocalidadesBogota.values.toList()
+    ..shuffle(_rngDecorativo);
+  return centros.take(cantidad).toList();
+}
+
+List<LatLng> conVariacionAleatoria(List<LatLng> anclas) {
+  return anclas.map((p) {
+    final dLat = (_rngDecorativo.nextDouble() - 0.5) * 0.006;
+    final dLng = (_rngDecorativo.nextDouble() - 0.5) * 0.006;
+    return LatLng(p.latitude + dLat, p.longitude + dLng);
+  }).toList();
 }
 
 /// Colaborador disponible en el mapa, al estilo de los carros de

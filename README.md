@@ -207,6 +207,12 @@ instales la app.
   (`backend/ubicaciones.js`) la guarda solo en memoria (nunca en la base
   de datos), la difumina ~150m por privacidad antes de mostrarla, y cada
   colaborador desaparece solo si deja de enviarla por 90s.
+- Además, tanto el mapa del Cliente como el del Colaborador muestran
+  varios íconos de lupa **decorativos** (`anclasDecorativasColaboradores`
+  / `conVariacionAleatoria` en `lib/widgets/bogota_map.dart`): no
+  representan colaboradores reales, son puramente visuales para que el
+  mapa nunca se vea vacío, con una pequeña variación aleatoria en cada
+  refresco para dar sensación de movimiento.
 - `lib/services/content_moderation_service.dart` bloquea automáticamente
   el envío de una solicitud si su descripción contiene palabras
   relacionadas con contenido sexual o explotación infantil. Es un filtro

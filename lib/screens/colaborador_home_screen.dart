@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
@@ -37,9 +38,14 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   Timer? _actualizacionPeriodica;
   Timer? _envioUbicacion;
 
+  // Puntos "de ambiente": no son colaboradores reales, solo para que el
+  // mapa nunca se vea vacío, como los carros de Uber/Didi.
+  late final List<LatLng> _anclasDecorativas;
+
   @override
   void initState() {
     super.initState();
+    _anclasDecorativas = anclasDecorativasColaboradores();
     _cargarDatos();
     // Sin websockets, refrescamos cada pocos segundos: es lo que hace
     // que una solicitud "desaparezca" para los demás colaboradores en
@@ -146,6 +152,10 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
             color: AppColors.success,
             icon: Icons.directions_walk_rounded,
           )),
+      // De ambiente: no son colaboradores reales, solo para que el mapa
+      // nunca se vea vacío, como los carros de Uber/Didi.
+      ...conVariacionAleatoria(_anclasDecorativas)
+          .map((p) => buildColaboradorMarker(punto: p)),
     ];
 
     return Scaffold(

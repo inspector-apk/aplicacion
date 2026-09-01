@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
@@ -41,9 +42,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   Timer? _actualizacionColaboradores;
   List<ColaboradorCercano> _colaboradoresCercanos = [];
 
+  // Puntos "de ambiente": no son colaboradores reales, solo para que el
+  // mapa nunca se vea vacío, como los carros de Uber/Didi.
+  late final List<LatLng> _anclasDecorativas;
+
   @override
   void initState() {
     super.initState();
+    _anclasDecorativas = anclasDecorativasColaboradores();
     _cargarSolicitudActiva();
     // Sin websockets, refrescamos cada pocos segundos para simular
     // tiempo real (ej. cuando un colaborador acepta la solicitud).
@@ -185,9 +191,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         ),
       // Solo se muestran mientras no hay una solicitud activa (como en
       // Uber: ves los carros disponibles antes de pedir el viaje).
-      if (_solicitudActiva == null)
+      if (_solicitudActiva == null) ...[
         ..._colaboradoresCercanos
             .map((c) => buildColaboradorMarker(punto: c.punto)),
+        // De ambiente: no son colaboradores reales, solo para que el
+        // mapa nunca se vea vacío.
+        ...conVariacionAleatoria(_anclasDecorativas)
+            .map((p) => buildColaboradorMarker(punto: p)),
+      ],
     ];
 
     return Scaffold(
