@@ -88,8 +88,16 @@ generan por ti en segundos si necesitas recompilar.
    escanear con Google Authenticator/Authy/Microsoft Authenticator; pide
    el primer código generado para confirmar antes de habilitarla.
 10. **Verificar 2FA** (`lib/screens/two_factor_verify_screen.dart`) — paso
-    adicional del login para quienes activaron la verificación en dos
-    pasos: pide el código de 6 dígitos después de la contraseña.
+    adicional del login, ahora **obligatorio**: pide el código de 6
+    dígitos después de la contraseña. Incluye **recuperación por
+    correo** ("¿Perdiste el código?"): reutiliza
+    `EmailVerificationService` (el mismo que verifica el correo al
+    registrarse) para mandar un código de un solo uso al correo
+    registrado; al verificarlo, desactiva el 2FA de esa cuenta y deja
+    entrar — el usuario puede volver a activarlo desde su perfil. Sin
+    esto, alguien que pierde su app autenticadora quedaría bloqueado
+    para siempre (todo el 2FA es local, sin backend que lo pueda
+    resetear).
 11. **Panel de administrador** (`lib/screens/admin_panel_screen.dart`) —
     solo para la cuenta admin (ver abajo); dos pestañas con todos los
     usuarios registrados y todas las solicitudes creadas, cada una con
