@@ -16,6 +16,7 @@ import '../widgets/app_buttons.dart';
 import '../widgets/bogota_map.dart';
 import '../widgets/map_bottom_panel.dart';
 import '../widgets/map_top_bar.dart';
+import '../widgets/imagen_referencia_thumb.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
 import 'responder_solicitud_screen.dart';
@@ -325,6 +326,11 @@ class _SolicitudCard extends StatelessWidget {
             SolicitudInfoRow(
                 icono: Icons.check_circle_outline,
                 texto: 'Pagado (simulado) · ${solicitud.metodoPago}'),
+          if (solicitud.imagenReferenciaBase64 != null) ...[
+            const SizedBox(height: 8),
+            ImagenReferenciaThumb(
+                imagenBase64: solicitud.imagenReferenciaBase64!),
+          ],
           const SizedBox(height: 10),
           PrimaryButton(
             label: accionLabel,

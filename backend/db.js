@@ -42,6 +42,7 @@ agregarColumnaSiFalta('respuesta_video_base64', 'TEXT');
 agregarColumnaSiFalta('direccion', "TEXT NOT NULL DEFAULT ''");
 agregarColumnaSiFalta('referencia_pago', "TEXT NOT NULL DEFAULT ''");
 agregarColumnaSiFalta('metodo_pago', "TEXT NOT NULL DEFAULT ''");
+agregarColumnaSiFalta('imagen_referencia_base64', 'TEXT');
 
 // Columnas "seguras": todo excepto el contenido real de la respuesta
 // (respuesta_texto, respuesta_imagen_base64, respuesta_audio_base64,
@@ -52,8 +53,8 @@ agregarColumnaSiFalta('metodo_pago', "TEXT NOT NULL DEFAULT ''");
 const COLUMNAS_SEGURAS = `
   id, cliente_alias, colaborador_alias, tipos, categoria, valor_total,
   referencia_pago, metodo_pago, descripcion, localidad, direccion,
-  latitud, longitud, estado, fecha_creacion, fecha_actualizacion,
-  respuesta_fecha, respuesta_vista
+  imagen_referencia_base64, latitud, longitud, estado, fecha_creacion,
+  fecha_actualizacion, respuesta_fecha, respuesta_vista
 `;
 
 function ahora() {
@@ -72,15 +73,15 @@ function conTiposParseados(fila) {
   return { ...fila, tipos };
 }
 
-function crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, latitud, longitud }) {
+function crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud }) {
   const fecha = ahora();
   const info = db
     .prepare(`
       INSERT INTO solicitudes
-        (cliente_alias, tipo, tipos, categoria, valor_total, referencia_pago, metodo_pago, descripcion, localidad, direccion, latitud, longitud, estado, fecha_creacion, fecha_actualizacion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
+        (cliente_alias, tipo, tipos, categoria, valor_total, referencia_pago, metodo_pago, descripcion, localidad, direccion, imagen_referencia_base64, latitud, longitud, estado, fecha_creacion, fecha_actualizacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
     `)
-    .run(clienteAlias, tipos[0], JSON.stringify(tipos), categoria, valorTotal, referenciaPago || '', metodoPago || '', descripcion, localidad, direccion || '', latitud, longitud, fecha, fecha);
+    .run(clienteAlias, tipos[0], JSON.stringify(tipos), categoria, valorTotal, referenciaPago || '', metodoPago || '', descripcion, localidad, direccion || '', imagenReferenciaBase64 || null, latitud, longitud, fecha, fecha);
   return obtenerPorId(info.lastInsertRowid);
 }
 

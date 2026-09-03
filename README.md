@@ -156,6 +156,15 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Imagen de referencia opcional**: al crear la solicitud, el Cliente
+  puede adjuntar una foto (cámara o galería) para mostrarle al
+  colaborador exactamente qué necesita — a diferencia del contenido de
+  la respuesta, esta imagen NO es de una sola vista: queda visible
+  mientras dure la solicitud, para el propio cliente, el colaborador
+  (incluso mientras responde) y el admin (`imagen_referencia_base64`,
+  columna nueva vía migración aditiva, incluida en las columnas
+  "seguras" a propósito porque no es contenido privado de la respuesta).
+  Widget reutilizable: `lib/widgets/imagen_referencia_thumb.dart`.
 - **Cuenta bancaria y ganancias del Colaborador (FICTICIAS)**: en su
   perfil (`lib/screens/home_screen.dart`), el Colaborador guarda un
   banco y número de cuenta simulados (`banco_ficticio`,

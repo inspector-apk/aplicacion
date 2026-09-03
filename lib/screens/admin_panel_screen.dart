@@ -337,6 +337,11 @@ class _ListaSolicitudes extends StatelessWidget {
                   'Pago (simulado): ${s.metodoPago} · Ref: ${s.referenciaPago}',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
+              if (s.imagenReferenciaBase64 != null)
+                const Text(
+                  'Incluye imagen de referencia del cliente',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
             ],
           ),
         );

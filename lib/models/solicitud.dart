@@ -100,6 +100,13 @@ class Solicitud {
   /// la localidad elegida — para que el colaborador sepa a dónde ir.
   final String direccion;
 
+  /// Imagen de referencia OPCIONAL que el cliente adjunta al crear la
+  /// solicitud (ej. para mostrar exactamente qué lugar o ángulo
+  /// necesita). A diferencia del contenido de la respuesta, esta no es
+  /// de una sola vista: la ve el colaborador mientras atiende la
+  /// solicitud, y sigue visible después (no se borra al verla).
+  final String? imagenReferenciaBase64;
+
   final double latitud;
   final double longitud;
   final EstadoSolicitud estado;
@@ -124,6 +131,7 @@ class Solicitud {
     required this.descripcion,
     required this.localidad,
     this.direccion = '',
+    this.imagenReferenciaBase64,
     required this.latitud,
     required this.longitud,
     required this.estado,
@@ -150,6 +158,8 @@ class Solicitud {
       'descripcion': descripcion,
       'localidad': localidad,
       'direccion': direccion,
+      if (imagenReferenciaBase64 != null)
+        'imagenReferenciaBase64': imagenReferenciaBase64,
       'latitud': latitud,
       'longitud': longitud,
     };
@@ -174,6 +184,7 @@ class Solicitud {
       metodoPago: json['metodo_pago'] as String? ?? '',
       descripcion: json['descripcion'] as String,
       direccion: json['direccion'] as String? ?? '',
+      imagenReferenciaBase64: json['imagen_referencia_base64'] as String?,
       localidad: json['localidad'] as String,
       latitud: (json['latitud'] as num).toDouble(),
       longitud: (json['longitud'] as num).toDouble(),

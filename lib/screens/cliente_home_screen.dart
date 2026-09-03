@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
@@ -15,6 +18,7 @@ import '../widgets/app_buttons.dart';
 import '../widgets/bogota_map.dart';
 import '../widgets/map_bottom_panel.dart';
 import '../widgets/map_top_bar.dart';
+import '../widgets/imagen_referencia_thumb.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
 import 'pago_ficticio_screen.dart';
@@ -42,6 +46,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   String? _localidad;
   final _descripcionCtrl = TextEditingController();
   final _direccionCtrl = TextEditingController();
+  File? _imagenReferencia;
   Timer? _actualizacionPeriodica;
   Timer? _actualizacionColaboradores;
   List<ColaboradorCercano> _colaboradoresCercanos = [];
@@ -100,6 +105,20 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     }
   }
 
+  Future<void> _elegirImagenReferencia(ImageSource origen) async {
+    final archivo = await ImagePicker().pickImage(
+      source: origen,
+      maxWidth: 1600,
+      imageQuality: 70,
+    );
+    if (archivo == null) return;
+    setState(() => _imagenReferencia = File(archivo.path));
+  }
+
+  void _quitarImagenReferencia() {
+    setState(() => _imagenReferencia = null);
+  }
+
   void _alternarTipo(TipoSolicitud t) {
     setState(() {
       if (_tipos.contains(t)) {
@@ -150,6 +169,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       final tiposOrdenados = TipoSolicitud.values
           .where((t) => _tipos.contains(t))
           .toList();
+      String? imagenReferenciaBase64;
+      if (_imagenReferencia != null) {
+        imagenReferenciaBase64 =
+            base64Encode(await _imagenReferencia!.readAsBytes());
+      }
       await SolicitudService.crearSolicitud(
         clienteAlias: widget.usuario.alias,
         tipos: tiposOrdenados,
@@ -159,9 +183,11 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         direccion: _direccionCtrl.text,
         referenciaPago: resultadoPago.referencia,
         metodoPago: resultadoPago.metodo,
+        imagenReferenciaBase64: imagenReferenciaBase64,
       );
       _descripcionCtrl.clear();
       _direccionCtrl.clear();
+      setState(() => _imagenReferencia = null);
       await _cargarSolicitudActiva();
       if (mounted) {
         _mostrarMensaje('Pago simulado exitoso · Ref: ${resultadoPago.referencia}');
@@ -272,12 +298,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       localidad: _localidad,
                       descripcionCtrl: _descripcionCtrl,
                       direccionCtrl: _direccionCtrl,
+                      imagenReferencia: _imagenReferencia,
                       cargando: _enviando,
                       onCategoriaChanged: (c) =>
                           setState(() => _categoria = c),
                       onTipoToggle: _alternarTipo,
                       onLocalidadChanged: (l) =>
                           setState(() => _localidad = l),
+                      onElegirImagen: _elegirImagenReferencia,
+                      onQuitarImagen: _quitarImagenReferencia,
                       onEnviar: _enviarSolicitud,
                     ),
             ),
@@ -293,10 +322,13 @@ class _PanelFormulario extends StatelessWidget {
   final String? localidad;
   final TextEditingController descripcionCtrl;
   final TextEditingController direccionCtrl;
+  final File? imagenReferencia;
   final bool cargando;
   final ValueChanged<Categoria> onCategoriaChanged;
   final ValueChanged<TipoSolicitud> onTipoToggle;
   final ValueChanged<String?> onLocalidadChanged;
+  final ValueChanged<ImageSource> onElegirImagen;
+  final VoidCallback onQuitarImagen;
   final VoidCallback onEnviar;
 
   const _PanelFormulario({
@@ -305,10 +337,13 @@ class _PanelFormulario extends StatelessWidget {
     required this.localidad,
     required this.descripcionCtrl,
     required this.direccionCtrl,
+    required this.imagenReferencia,
     required this.cargando,
     required this.onCategoriaChanged,
     required this.onTipoToggle,
     required this.onLocalidadChanged,
+    required this.onElegirImagen,
+    required this.onQuitarImagen,
     required this.onEnviar,
   });
 
@@ -411,6 +446,71 @@ class _PanelFormulario extends StatelessWidget {
               helperText: 'Calle/carrera y número donde debe ir el colaborador',
             ),
           ),
+          const SizedBox(height: 18),
+          const Text(
+            'Imagen de referencia (opcional)',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Si lo crees necesario, adjunta una foto que ayude al '
+            'colaborador a entender exactamente qué necesitas.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          if (imagenReferencia != null)
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.file(
+                    imagenReferencia!,
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: InkWell(
+                    onTap: onQuitarImagen,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.black87,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlineActionButton(
+                    label: 'CÁMARA',
+                    onPressed: () => onElegirImagen(ImageSource.camera),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlineActionButton(
+                    label: 'GALERÍA',
+                    onPressed: () => onElegirImagen(ImageSource.gallery),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -554,6 +654,11 @@ class _PanelSeguimiento extends StatelessWidget {
                 icono: Icons.check_circle_outline,
                 texto:
                     'Pagado (simulado) · ${solicitud.metodoPago} · Ref: ${solicitud.referenciaPago}'),
+          if (solicitud.imagenReferenciaBase64 != null) ...[
+            const SizedBox(height: 12),
+            ImagenReferenciaThumb(
+                imagenBase64: solicitud.imagenReferenciaBase64!),
+          ],
           const SizedBox(height: 16),
           if (tieneRespuesta)
             PrimaryButton(

@@ -67,6 +67,7 @@ class SolicitudService {
     required String direccion,
     required String referenciaPago,
     required String metodoPago,
+    String? imagenReferenciaBase64,
   }) async {
     final centro = kLocalidadesBogota[localidad] ?? kBogotaCenter;
     final valorTotal = calcularValorTotal(categoria, tipos);
@@ -85,11 +86,13 @@ class SolicitudService {
             'descripcion': descripcion.trim(),
             'localidad': localidad,
             'direccion': direccion.trim(),
+            if (imagenReferenciaBase64 != null)
+              'imagenReferenciaBase64': imagenReferenciaBase64,
             'latitud': centro.latitude,
             'longitud': centro.longitude,
           }),
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 30));
 
     final cuerpo = _decodificar(respuesta);
     if (cuerpo['ok'] != true) {

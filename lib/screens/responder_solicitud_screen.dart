@@ -15,6 +15,7 @@ import '../models/usuario.dart';
 import '../services/deteccion_ia_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
+import '../widgets/imagen_referencia_thumb.dart';
 
 /// A partir de este % de IA se le pide al colaborador confirmar
 /// explícitamente que la foto es real antes de dejarlo enviarla.
@@ -292,6 +293,11 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
                   : widget.solicitud.localidad,
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
+            if (widget.solicitud.imagenReferenciaBase64 != null) ...[
+              const SizedBox(height: 14),
+              ImagenReferenciaThumb(
+                  imagenBase64: widget.solicitud.imagenReferenciaBase64!),
+            ],
             for (final t in _tipos) ...[
               const SizedBox(height: 24),
               _seccionPara(t),
