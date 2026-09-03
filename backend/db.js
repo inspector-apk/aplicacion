@@ -228,6 +228,18 @@ function historialDeCliente(clienteAlias) {
     .map(conTiposParseados);
 }
 
+/**
+ * Historial completo (cualquier estado) de un colaborador — para su
+ * pantalla de "Ganancias": suma el valor_total de las completadas
+ * (FICTICIO, no hay dinero real de por medio).
+ */
+function historialDeColaborador(colaboradorAlias) {
+  return db
+    .prepare(`SELECT ${COLUMNAS_SEGURAS} FROM solicitudes WHERE colaborador_alias = ? ORDER BY fecha_creacion DESC`)
+    .all(colaboradorAlias)
+    .map(conTiposParseados);
+}
+
 function eliminarSolicitud(id) {
   db.prepare('DELETE FROM solicitudes WHERE id = ?').run(id);
 }
@@ -244,5 +256,6 @@ module.exports = {
   cancelarSolicitud,
   todasLasSolicitudes,
   historialDeCliente,
+  historialDeColaborador,
   eliminarSolicitud,
 };

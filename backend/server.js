@@ -160,6 +160,17 @@ app.get('/api/solicitudes/historial', requiereApiKey, (req, res) => {
   res.json({ ok: true, solicitudes: db.historialDeCliente(clienteAlias) });
 });
 
+// Historial completo (cualquier estado) de un colaborador, para su
+// pantalla de "Ganancias" (suma el valor_total de las completadas —
+// FICTICIO, no hay dinero real de por medio).
+app.get('/api/solicitudes/historial-colaborador', requiereApiKey, (req, res) => {
+  const colaboradorAlias = String(req.query.colaboradorAlias || '');
+  if (!colaboradorAlias) {
+    return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
+  }
+  res.json({ ok: true, solicitudes: db.historialDeColaborador(colaboradorAlias) });
+});
+
 app.post('/api/solicitudes/:id/cancelar', requiereApiKey, (req, res) => {
   const id = Number(req.params.id);
   const { clienteAlias } = req.body;

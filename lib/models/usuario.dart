@@ -37,6 +37,12 @@ class Usuario {
   final String? ocupacion;
   final String? localidadTrabajo;
 
+  /// Cuenta bancaria FICTICIA del colaborador (no hay pasarela de pagos
+  /// real ni transferencias de dinero de verdad) — solo para simular a
+  /// dónde "llegaría" el pago al completar una solicitud.
+  final String? bancoFicticio;
+  final String? numeroCuentaFicticia;
+
   const Usuario({
     this.id,
     required this.nombre,
@@ -53,6 +59,8 @@ class Usuario {
     this.totpHabilitado = false,
     this.ocupacion,
     this.localidadTrabajo,
+    this.bancoFicticio,
+    this.numeroCuentaFicticia,
   });
 
   Usuario copyWith({
@@ -64,6 +72,8 @@ class Usuario {
     bool? totpHabilitado,
     String? ocupacion,
     String? localidadTrabajo,
+    String? bancoFicticio,
+    String? numeroCuentaFicticia,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -81,6 +91,8 @@ class Usuario {
       totpHabilitado: totpHabilitado ?? this.totpHabilitado,
       ocupacion: ocupacion ?? this.ocupacion,
       localidadTrabajo: localidadTrabajo ?? this.localidadTrabajo,
+      bancoFicticio: bancoFicticio ?? this.bancoFicticio,
+      numeroCuentaFicticia: numeroCuentaFicticia ?? this.numeroCuentaFicticia,
     );
   }
 
@@ -101,6 +113,8 @@ class Usuario {
       'totp_habilitado': totpHabilitado ? 1 : 0,
       'ocupacion': ocupacion,
       'localidad_trabajo': localidadTrabajo,
+      'banco_ficticio': bancoFicticio,
+      'numero_cuenta_ficticia': numeroCuentaFicticia,
     };
   }
 
@@ -121,6 +135,8 @@ class Usuario {
       totpHabilitado: ((map['totp_habilitado'] as int?) ?? 0) == 1,
       ocupacion: map['ocupacion'] as String?,
       localidadTrabajo: map['localidad_trabajo'] as String?,
+      bancoFicticio: map['banco_ficticio'] as String?,
+      numeroCuentaFicticia: map['numero_cuenta_ficticia'] as String?,
     );
   }
 }

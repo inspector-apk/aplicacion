@@ -128,7 +128,12 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
         ResponderSolicitudScreen(solicitud: solicitud, usuario: widget.usuario),
       ),
     );
-    if (enviada == true) await _cargarDatos();
+    if (enviada == true) {
+      await _cargarDatos();
+      _mostrarMensaje(
+          '¡Ganaste ${formatearPesos(solicitud.valorTotal)} (simulado)! '
+          'Transferido a tu cuenta bancaria configurada.');
+    }
   }
 
   void _mostrarMensaje(String mensaje) {

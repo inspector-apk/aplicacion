@@ -156,6 +156,18 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Cuenta bancaria y ganancias del Colaborador (FICTICIAS)**: en su
+  perfil (`lib/screens/home_screen.dart`), el Colaborador guarda un
+  banco y número de cuenta simulados (`banco_ficticio`,
+  `numero_cuenta_ficticia` en la tabla local de usuarios — ningún dato
+  real, no se valida contra ningún banco). Al completar una solicitud
+  ve un aviso de "ganaste $X (simulado), transferido a tu cuenta". La
+  pantalla **Ganancias** (`lib/screens/ganancias_screen.dart`) suma el
+  valor de todas sus solicitudes completadas y las lista como
+  transacciones — usa un endpoint nuevo del backend
+  (`GET /api/solicitudes/historial-colaborador`) que reutiliza el mismo
+  patrón que el historial del cliente (solo metadatos, nunca contenido
+  de respuestas).
 - **Pasarela de pago FICTICIA** (`lib/screens/pago_ficticio_screen.dart`):
   antes de enviar la solicitud, el Cliente pasa por una pantalla de
   "pago" con tarjeta (número, nombre, vencimiento, CVV) — ningún dato

@@ -9,10 +9,20 @@ import '../services/session_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
 import '../widgets/solicitud_info_row.dart';
+import 'ganancias_screen.dart';
 import 'historial_solicitudes_screen.dart';
 import 'role_selection_screen.dart';
 import 'splash_screen.dart';
 import 'two_factor_setup_screen.dart';
+
+/// Bancos ficticios para el selector de cuenta bancaria del colaborador
+/// (no representan entidades reales conectadas a la app).
+const _kBancosFicticios = [
+  'Banco Inspector',
+  'Banco Andino (simulado)',
+  'Banco Capital (simulado)',
+  'Billetera Digital (simulado)',
+];
 
 class HomeScreen extends StatefulWidget {
   final Usuario usuario;
@@ -32,10 +42,16 @@ class _HomeScreenState extends State<HomeScreen> {
   late final _ocupacionCtrl = TextEditingController(text: _usuario.ocupacion);
   String? _localidadTrabajo;
 
+  String? _bancoFicticio;
+  late final _numeroCuentaCtrl =
+      TextEditingController(text: _usuario.numeroCuentaFicticia);
+  bool _guardandoCuenta = false;
+
   @override
   void initState() {
     super.initState();
     _localidadTrabajo = _usuario.localidadTrabajo;
+    _bancoFicticio = _usuario.bancoFicticio;
     if (_usuario.rol == RolUsuario.cliente) {
       _cargarSolicitudActiva();
     }
@@ -44,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _ocupacionCtrl.dispose();
+    _numeroCuentaCtrl.dispose();
     super.dispose();
   }
 
@@ -155,6 +172,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _guardarCuentaBancaria() async {
+    if (_numeroCuentaCtrl.text.trim().isNotEmpty && _bancoFicticio == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Elige un banco')),
+      );
+      return;
+    }
+    setState(() => _guardandoCuenta = true);
+    final actualizado = await AuthService.actualizarCuentaBancaria(
+      usuarioId: _usuario.id!,
+      banco: _bancoFicticio,
+      numeroCuenta: _numeroCuentaCtrl.text.trim().isEmpty
+          ? null
+          : _numeroCuentaCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _usuario = actualizado;
+      _guardandoCuenta = false;
+    });
+    SessionService.instance.iniciarSesion(actualizado);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cuenta bancaria (ficticia) guardada')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usuario = _usuario;
@@ -263,6 +306,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   onLocalidadChanged: (l) =>
                       setState(() => _localidadTrabajo = l),
                   onGuardar: _guardarPerfilColaborador,
+                ),
+                const SizedBox(height: 20),
+                _CuentaBancariaCard(
+                  banco: _bancoFicticio,
+                  numeroCuentaCtrl: _numeroCuentaCtrl,
+                  cargando: _guardandoCuenta,
+                  onBancoChanged: (b) => setState(() => _bancoFicticio = b),
+                  onGuardar: _guardarCuentaBancaria,
+                ),
+                const SizedBox(height: 12),
+                OutlineActionButton(
+                  label: 'VER GANANCIAS',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                        AppRoutes.slide(GananciasScreen(usuario: usuario)));
+                  },
                 ),
               ],
               const SizedBox(height: 20),
@@ -515,6 +574,86 @@ class _DatosProfesionalesCard extends StatelessWidget {
                 .map((l) => DropdownMenuItem(value: l, child: Text(l)))
                 .toList(),
             onChanged: onLocalidadChanged,
+          ),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            label: 'GUARDAR',
+            isLoading: cargando,
+            onPressed: onGuardar,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tarjeta de "Cuenta bancaria" del Colaborador — FICTICIA: no hay
+/// pasarela de pagos real ni transferencias de dinero de verdad, solo
+/// se guarda para simular a dónde "llegaría" el pago al completar una
+/// solicitud (ver `lib/screens/ganancias_screen.dart`).
+class _CuentaBancariaCard extends StatelessWidget {
+  final String? banco;
+  final TextEditingController numeroCuentaCtrl;
+  final bool cargando;
+  final ValueChanged<String?> onBancoChanged;
+  final VoidCallback onGuardar;
+
+  const _CuentaBancariaCard({
+    required this.banco,
+    required this.numeroCuentaCtrl,
+    required this.cargando,
+    required this.onBancoChanged,
+    required this.onGuardar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cuenta bancaria (ficticia)',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'A esta cuenta simulada "llega" el pago cuando completas una '
+            'solicitud — no hay dinero real ni transferencias de verdad.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            value: banco,
+            dropdownColor: AppColors.surfaceVariant,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+            decoration: const InputDecoration(labelText: 'Banco'),
+            items: _kBancosFicticios
+                .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                .toList(),
+            onChanged: onBancoChanged,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: numeroCuentaCtrl,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: AppColors.textPrimary),
+            decoration: const InputDecoration(
+              labelText: 'Número de cuenta',
+              helperText: 'Cualquier número: no se valida ni se conecta a '
+                  'ningún banco real',
+            ),
           ),
           const SizedBox(height: 16),
           PrimaryButton(

@@ -230,6 +230,28 @@ class SolicitudService {
         cuerpo['respuesta'] as Map<String, dynamic>);
   }
 
+  /// Historial completo (cualquier estado) de un colaborador, para su
+  /// pantalla de Ganancias (suma el valor de las completadas — FICTICIO,
+  /// no hay dinero real de por medio).
+  static Future<List<Solicitud>> historialDeColaborador(
+      String colaboradorAlias) async {
+    final respuesta = await http
+        .get(
+            _uri('/api/solicitudes/historial-colaborador',
+                {'colaboradorAlias': colaboradorAlias}),
+            headers: _headers)
+        .timeout(const Duration(seconds: 15));
+
+    final cuerpo = _decodificar(respuesta);
+    if (cuerpo['ok'] != true) {
+      throw SolicitudException(
+          (cuerpo['error'] as String?) ?? 'No se pudo cargar tus ganancias.');
+    }
+    return (cuerpo['solicitudes'] as List)
+        .map((s) => Solicitud.fromJson(s as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Historial completo (cualquier estado) del cliente. Nunca incluye
   /// el contenido de las respuestas, solo metadatos.
   static Future<List<Solicitud>> historialDeCliente(

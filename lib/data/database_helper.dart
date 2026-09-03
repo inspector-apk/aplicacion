@@ -14,7 +14,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
 
   static const String _dbName = 'inspector.db';
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 6;
   static const String tableUsuarios = 'usuarios';
 
   Database? _db;
@@ -48,7 +48,9 @@ class DatabaseHelper {
             totp_secret TEXT,
             totp_habilitado INTEGER NOT NULL DEFAULT 0,
             ocupacion TEXT,
-            localidad_trabajo TEXT
+            localidad_trabajo TEXT,
+            banco_ficticio TEXT,
+            numero_cuenta_ficticia TEXT
           )
         ''');
       },
@@ -68,6 +70,12 @@ class DatabaseHelper {
         if (oldVersion < 5) {
           // Las solicitudes se mudaron al backend compartido.
           await db.execute('DROP TABLE IF EXISTS solicitudes');
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+              'ALTER TABLE $tableUsuarios ADD COLUMN banco_ficticio TEXT');
+          await db.execute(
+              'ALTER TABLE $tableUsuarios ADD COLUMN numero_cuenta_ficticia TEXT');
         }
       },
     );
@@ -203,6 +211,20 @@ class DatabaseHelper {
     await db.update(
       tableUsuarios,
       {'ocupacion': ocupacion, 'localidad_trabajo': localidadTrabajo},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> actualizarCuentaBancaria(
+    int id, {
+    required String? banco,
+    required String? numeroCuenta,
+  }) async {
+    final db = await database;
+    await db.update(
+      tableUsuarios,
+      {'banco_ficticio': banco, 'numero_cuenta_ficticia': numeroCuenta},
       where: 'id = ?',
       whereArgs: [id],
     );

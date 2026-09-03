@@ -167,4 +167,18 @@ class AuthService {
     final actualizado = await _db.getUsuarioPorId(usuarioId);
     return actualizado!;
   }
+
+  static Future<Usuario> actualizarCuentaBancaria({
+    required int usuarioId,
+    String? banco,
+    String? numeroCuenta,
+  }) async {
+    await _db.actualizarCuentaBancaria(
+      usuarioId,
+      banco: banco,
+      numeroCuenta: numeroCuenta,
+    );
+    final actualizado = await _db.getUsuarioPorId(usuarioId);
+    return actualizado!;
+  }
 }
