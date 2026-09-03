@@ -181,4 +181,13 @@ class AuthService {
     final actualizado = await _db.getUsuarioPorId(usuarioId);
     return actualizado!;
   }
+
+  /// Bloquea la cuenta del colaborador por 5 minutos: se llama cuando
+  /// cancela una solicitud que ya había aceptado.
+  static Future<Usuario> bloquearPorCancelacion(int usuarioId) async {
+    final hasta = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await _db.bloquearHasta(usuarioId, hasta);
+    final actualizado = await _db.getUsuarioPorId(usuarioId);
+    return actualizado!;
+  }
 }

@@ -14,7 +14,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
 
   static const String _dbName = 'inspector.db';
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
   static const String tableUsuarios = 'usuarios';
 
   Database? _db;
@@ -50,7 +50,8 @@ class DatabaseHelper {
             ocupacion TEXT,
             localidad_trabajo TEXT,
             banco_ficticio TEXT,
-            numero_cuenta_ficticia TEXT
+            numero_cuenta_ficticia TEXT,
+            bloqueado_hasta TEXT
           )
         ''');
       },
@@ -76,6 +77,10 @@ class DatabaseHelper {
               'ALTER TABLE $tableUsuarios ADD COLUMN banco_ficticio TEXT');
           await db.execute(
               'ALTER TABLE $tableUsuarios ADD COLUMN numero_cuenta_ficticia TEXT');
+        }
+        if (oldVersion < 7) {
+          await db.execute(
+              'ALTER TABLE $tableUsuarios ADD COLUMN bloqueado_hasta TEXT');
         }
       },
     );
@@ -225,6 +230,18 @@ class DatabaseHelper {
     await db.update(
       tableUsuarios,
       {'banco_ficticio': banco, 'numero_cuenta_ficticia': numeroCuenta},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Bloquea la cuenta del colaborador hasta la fecha/hora indicada
+  /// (UTC), por haber cancelado una solicitud que ya había aceptado.
+  Future<void> bloquearHasta(int id, DateTime hastaUtc) async {
+    final db = await database;
+    await db.update(
+      tableUsuarios,
+      {'bloqueado_hasta': hastaUtc.toIso8601String()},
       where: 'id = ?',
       whereArgs: [id],
     );

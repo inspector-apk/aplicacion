@@ -160,6 +160,23 @@ app.get('/api/solicitudes/historial', requiereApiKey, (req, res) => {
   res.json({ ok: true, solicitudes: db.historialDeCliente(clienteAlias) });
 });
 
+// El colaborador cancela una solicitud que ya había aceptado: vuelve a
+// quedar disponible para cualquier otro colaborador. La app bloquea la
+// cuenta de quien cancela por 5 minutos (eso lo hace el propio
+// dispositivo, es local — ver AuthService.bloquearPorCancelacion).
+app.post('/api/solicitudes/:id/cancelar-colaborador', requiereApiKey, (req, res) => {
+  const id = Number(req.params.id);
+  const { colaboradorAlias } = req.body;
+  if (!colaboradorAlias) {
+    return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
+  }
+  const solicitud = db.colaboradorCancelaSolicitud(id, colaboradorAlias);
+  if (!solicitud) {
+    return res.status(409).json({ ok: false, error: 'No se pudo cancelar la solicitud' });
+  }
+  res.json({ ok: true, solicitud });
+});
+
 // Historial completo (cualquier estado) de un colaborador, para su
 // pantalla de "Ganancias" (suma el valor_total de las completadas —
 // FICTICIO, no hay dinero real de por medio).

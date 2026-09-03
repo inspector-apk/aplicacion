@@ -156,6 +156,27 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Vista previa antes de aceptar + cancelación con bloqueo temporal**:
+  en "Solicitudes disponibles" (pendientes, sin aceptar), el Colaborador
+  solo ve un adelanto: categoría, tipos, localidad general, un
+  fragmento de la descripción y cuánto va a ganar — sin dirección
+  exacta, sin la descripción completa y sin la imagen de referencia
+  (`_SolicitudCard` con `vistaPrevia: true` en
+  `lib/screens/colaborador_home_screen.dart`). Todo eso se revela recién
+  al aceptar. Una vez aceptada, si el colaborador la cancela, vuelve a
+  quedar disponible para otros (`POST
+  /api/solicitudes/:id/cancelar-colaborador`) y su cuenta queda
+  **bloqueada 5 minutos** (`bloqueado_hasta` en la tabla local de
+  usuarios, `AuthService.bloquearPorCancelacion`) — durante ese tiempo
+  no puede ver ni aceptar solicitudes, con un aviso explícito antes de
+  confirmar y un conteo regresivo en pantalla.
+- **Comisión de la plataforma (FICTICIA)**: de lo que "paga" el cliente,
+  el colaborador gana el 90% y el 10% restante es una comisión
+  simulada de la plataforma (`lib/core/precios.dart`:
+  `gananciaColaborador`/`comisionPlataforma`). La pantalla Ganancias del
+  colaborador ya muestra el monto con el descuento aplicado, y el panel
+  de administrador tiene un resumen de "Comisiones de la plataforma"
+  con el total acumulado — nada de esto mueve dinero real.
 - **Imagen de referencia opcional**: al crear la solicitud, el Cliente
   puede adjuntar una foto (cámara o galería) para mostrarle al
   colaborador exactamente qué necesita — a diferencia del contenido de

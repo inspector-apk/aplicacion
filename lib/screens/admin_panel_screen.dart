@@ -268,12 +268,51 @@ class _ListaSolicitudes extends StatelessWidget {
             style: TextStyle(color: AppColors.textSecondary)),
       );
     }
+    final completadas =
+        solicitudes.where((s) => s.estado == EstadoSolicitud.completada);
+    final comisionTotal = completadas.fold<int>(
+        0, (suma, s) => suma + comisionPlataforma(s.valorTotal));
+
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: solicitudes.length,
+      itemCount: solicitudes.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
-        final s = solicitudes[i];
+        if (i == 0) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.accent, AppColors.accentDim],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Comisiones de la plataforma (simuladas, 10%)',
+                    style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5)),
+                const SizedBox(height: 6),
+                Text(
+                  formatearPesos(comisionTotal),
+                  style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 24),
+                ),
+                const SizedBox(height: 2),
+                Text('De ${completadas.length} solicitudes completadas',
+                    style: const TextStyle(color: Colors.black87, fontSize: 11.5)),
+              ],
+            ),
+          );
+        }
+        final s = solicitudes[i - 1];
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(

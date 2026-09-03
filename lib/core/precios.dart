@@ -32,6 +32,17 @@ int calcularValorTotal(Categoria categoria, Iterable<TipoSolicitud> tipos) {
   return tipos.fold(0, (suma, t) => suma + precioDe(categoria, t));
 }
 
+/// Comisión FICTICIA de la plataforma: 10% de lo que pagó el cliente.
+/// El otro 90% es lo que "gana" el colaborador. No hay dinero real de
+/// por medio en ningún lado.
+const double kComisionPlataforma = 0.10;
+
+int gananciaColaborador(int valorTotal) =>
+    valorTotal - comisionPlataforma(valorTotal);
+
+int comisionPlataforma(int valorTotal) =>
+    (valorTotal * kComisionPlataforma).round();
+
 /// Formatea un valor entero como pesos colombianos: "$45.000".
 String formatearPesos(int valor) {
   final texto = valor.toString();

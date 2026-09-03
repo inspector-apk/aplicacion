@@ -214,6 +214,24 @@ function cancelarSolicitud(id, clienteAlias) {
   return obtenerPorId(id);
 }
 
+/**
+ * El colaborador cancela una solicitud que ya había aceptado: vuelve a
+ * quedar 'pendiente' y sin colaborador asignado, para que cualquier
+ * otro la pueda tomar (la app, del lado del cliente, bloquea la cuenta
+ * del colaborador 5 minutos por hacer esto).
+ */
+function colaboradorCancelaSolicitud(id, colaboradorAlias) {
+  const info = db
+    .prepare(`
+      UPDATE solicitudes
+      SET estado = 'pendiente', colaborador_alias = NULL, fecha_actualizacion = ?
+      WHERE id = ? AND colaborador_alias = ? AND estado = 'aceptada'
+    `)
+    .run(ahora(), id, colaboradorAlias);
+  if (info.changes === 0) return null;
+  return obtenerPorId(id);
+}
+
 function todasLasSolicitudes() {
   return db
     .prepare(`SELECT ${COLUMNAS_SEGURAS} FROM solicitudes ORDER BY fecha_creacion DESC`)
@@ -255,6 +273,7 @@ module.exports = {
   responderSolicitud,
   consumirRespuesta,
   cancelarSolicitud,
+  colaboradorCancelaSolicitud,
   todasLasSolicitudes,
   historialDeCliente,
   historialDeColaborador,

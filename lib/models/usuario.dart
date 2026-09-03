@@ -43,6 +43,11 @@ class Usuario {
   final String? bancoFicticio;
   final String? numeroCuentaFicticia;
 
+  /// Si un colaborador cancela una solicitud que ya había aceptado, su
+  /// cuenta queda bloqueada (no puede aceptar nuevas solicitudes) hasta
+  /// esta fecha/hora (ISO 8601, en UTC). null = no está bloqueado.
+  final String? bloqueadoHasta;
+
   const Usuario({
     this.id,
     required this.nombre,
@@ -61,7 +66,25 @@ class Usuario {
     this.localidadTrabajo,
     this.bancoFicticio,
     this.numeroCuentaFicticia,
+    this.bloqueadoHasta,
   });
+
+  /// true si todavía está dentro del bloqueo temporal por haber
+  /// cancelado una solicitud aceptada.
+  bool get estaBloqueado {
+    if (bloqueadoHasta == null) return false;
+    final hasta = DateTime.tryParse(bloqueadoHasta!);
+    if (hasta == null) return false;
+    return DateTime.now().toUtc().isBefore(hasta);
+  }
+
+  Duration get tiempoRestanteBloqueo {
+    if (bloqueadoHasta == null) return Duration.zero;
+    final hasta = DateTime.tryParse(bloqueadoHasta!);
+    if (hasta == null) return Duration.zero;
+    final restante = hasta.difference(DateTime.now().toUtc());
+    return restante.isNegative ? Duration.zero : restante;
+  }
 
   Usuario copyWith({
     int? id,
@@ -74,6 +97,7 @@ class Usuario {
     String? localidadTrabajo,
     String? bancoFicticio,
     String? numeroCuentaFicticia,
+    String? bloqueadoHasta,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -93,6 +117,7 @@ class Usuario {
       localidadTrabajo: localidadTrabajo ?? this.localidadTrabajo,
       bancoFicticio: bancoFicticio ?? this.bancoFicticio,
       numeroCuentaFicticia: numeroCuentaFicticia ?? this.numeroCuentaFicticia,
+      bloqueadoHasta: bloqueadoHasta ?? this.bloqueadoHasta,
     );
   }
 
@@ -115,6 +140,7 @@ class Usuario {
       'localidad_trabajo': localidadTrabajo,
       'banco_ficticio': bancoFicticio,
       'numero_cuenta_ficticia': numeroCuentaFicticia,
+      'bloqueado_hasta': bloqueadoHasta,
     };
   }
 
@@ -137,6 +163,7 @@ class Usuario {
       localidadTrabajo: map['localidad_trabajo'] as String?,
       bancoFicticio: map['banco_ficticio'] as String?,
       numeroCuentaFicticia: map['numero_cuenta_ficticia'] as String?,
+      bloqueadoHasta: map['bloqueado_hasta'] as String?,
     );
   }
 }

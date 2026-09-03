@@ -82,8 +82,8 @@ class _GananciasScreenState extends State<GananciasScreen> {
 
     final completadas =
         _historial.where((s) => s.estado == EstadoSolicitud.completada).toList();
-    final totalGanado =
-        completadas.fold<int>(0, (suma, s) => suma + s.valorTotal);
+    final totalGanado = completadas.fold<int>(
+        0, (suma, s) => suma + gananciaColaborador(s.valorTotal));
     final enCurso = _historial
         .where((s) =>
             s.estado == EstadoSolicitud.aceptada ||
@@ -127,6 +127,11 @@ class _GananciasScreenState extends State<GananciasScreen> {
                 '${completadas.length} solicitudes completadas'
                 '${enCurso > 0 ? ' · $enCurso en curso' : ''}',
                 style: const TextStyle(color: Colors.black87, fontSize: 12.5),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Ya se descontó el 10% de comisión de la plataforma (simulado)',
+                style: TextStyle(color: Colors.black54, fontSize: 11),
               ),
             ],
           ),
@@ -242,7 +247,7 @@ class _TransaccionCard extends StatelessWidget {
             ),
           ),
           Text(
-            '+${formatearPesos(solicitud.valorTotal)}',
+            '+${formatearPesos(gananciaColaborador(solicitud.valorTotal))}',
             style: const TextStyle(
                 color: AppColors.success,
                 fontWeight: FontWeight.w800,

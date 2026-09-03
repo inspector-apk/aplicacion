@@ -175,6 +175,28 @@ class SolicitudService {
     }
   }
 
+  /// El colaborador cancela una solicitud que ya había aceptado: vuelve
+  /// a quedar disponible para cualquier otro. Quien llama a esto debe
+  /// bloquear la cuenta localmente (ver AuthService.bloquearPorCancelacion).
+  static Future<void> cancelarComoColaborador({
+    required int solicitudId,
+    required String colaboradorAlias,
+  }) async {
+    final respuesta = await http
+        .post(
+          _uri('/api/solicitudes/$solicitudId/cancelar-colaborador'),
+          headers: _headers,
+          body: jsonEncode({'colaboradorAlias': colaboradorAlias}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final cuerpo = _decodificar(respuesta);
+    if (cuerpo['ok'] != true) {
+      throw SolicitudException(
+          (cuerpo['error'] as String?) ?? 'No se pudo cancelar la solicitud.');
+    }
+  }
+
   /// El colaborador envía su respuesta y con eso mismo queda completada
   /// la solicitud. Debe incluir contenido para cada tipo que se pidió
   /// (ej. si la solicitud pedía texto + audio, hay que mandar ambos).
