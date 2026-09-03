@@ -332,6 +332,11 @@ class _ListaSolicitudes extends StatelessWidget {
                 '${formatearPesos(s.valorTotal)}',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
               ),
+              if (s.metodoPago.isNotEmpty)
+                Text(
+                  'Pago (simulado): ${s.metodoPago} · Ref: ${s.referenciaPago}',
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
             ],
           ),
         );

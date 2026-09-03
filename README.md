@@ -156,6 +156,16 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Pasarela de pago FICTICIA** (`lib/screens/pago_ficticio_screen.dart`):
+  antes de enviar la solicitud, el Cliente pasa por una pantalla de
+  "pago" con tarjeta (número, nombre, vencimiento, CVV) — ningún dato
+  se valida de verdad ni viaja a ningún lado (ni al backend propio):
+  todo es una simulación visual. Al "pagar" se genera una referencia
+  falsa (`PAG-XXXXXXXX`) y una descripción del método (`Tarjeta ••••
+  1234`), que sí se guardan junto con la solicitud (`referenciaPago`,
+  `metodoPago`) para mostrarse en el seguimiento, la tarjeta del
+  colaborador y el panel de administrador — como constancia de la
+  simulación, no como un cobro real.
 - **Dirección exacta**: además de la localidad (el área general de
   Bogotá), el Cliente escribe la dirección exacta (calle/carrera y
   número) donde el Colaborador debe ir — campo `direccion` en el

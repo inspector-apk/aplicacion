@@ -17,6 +17,7 @@ import '../widgets/map_bottom_panel.dart';
 import '../widgets/map_top_bar.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
+import 'pago_ficticio_screen.dart';
 import 'ver_respuesta_screen.dart';
 
 /// Pantalla principal del rol Cliente: mapa de Bogotá con un panel
@@ -133,6 +134,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       return;
     }
 
+    // Antes de enviar, pasa por la pasarela de pago (simulada, sin
+    // cobro real) — como haría una app de verdad.
+    final resultadoPago = await Navigator.of(context).push<ResultadoPagoFicticio>(
+      AppRoutes.slide(
+        PagoFicticioScreen(categoria: _categoria, tipos: _tipos),
+      ),
+    );
+    if (resultadoPago == null) return; // canceló el pago
+
     setState(() => _enviando = true);
     try {
       // Orden estable (texto, imagen, audio, video) sin importar el
@@ -147,10 +157,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         descripcion: _descripcionCtrl.text,
         localidad: _localidad!,
         direccion: _direccionCtrl.text,
+        referenciaPago: resultadoPago.referencia,
+        metodoPago: resultadoPago.metodo,
       );
       _descripcionCtrl.clear();
       _direccionCtrl.clear();
       await _cargarSolicitudActiva();
+      if (mounted) {
+        _mostrarMensaje('Pago simulado exitoso · Ref: ${resultadoPago.referencia}');
+      }
     } on SolicitudException catch (e) {
       _mostrarMensaje(e.mensaje);
     } catch (_) {
@@ -423,7 +438,7 @@ class _PanelFormulario extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           PrimaryButton(
-            label: 'ENVIAR SOLICITUD',
+            label: 'PAGAR Y ENVIAR SOLICITUD',
             isLoading: cargando,
             onPressed: onEnviar,
           ),
@@ -534,6 +549,11 @@ class _PanelSeguimiento extends StatelessWidget {
               icono: Icons.sell_outlined,
               texto:
                   'Valor de referencia (ficticio): ${formatearPesos(solicitud.valorTotal)}'),
+          if (solicitud.metodoPago.isNotEmpty)
+            SolicitudInfoRow(
+                icono: Icons.check_circle_outline,
+                texto:
+                    'Pagado (simulado) · ${solicitud.metodoPago} · Ref: ${solicitud.referenciaPago}'),
           const SizedBox(height: 16),
           if (tieneRespuesta)
             PrimaryButton(

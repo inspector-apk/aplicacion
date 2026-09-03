@@ -25,7 +25,7 @@ const TIPOS_VALIDOS = ['texto', 'imagen', 'audio', 'video'];
 const CATEGORIAS_VALIDAS = ['personal', 'comercial', 'industrial'];
 
 app.post('/api/solicitudes', requiereApiKey, (req, res) => {
-  const { clienteAlias, tipos, categoria, valorTotal, descripcion, localidad, direccion, latitud, longitud } = req.body;
+  const { clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, latitud, longitud } = req.body;
 
   if (!clienteAlias || typeof clienteAlias !== 'string') {
     return res.status(400).json({ ok: false, error: 'clienteAlias es requerido' });
@@ -42,6 +42,9 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
   if (!descripcion || !localidad || !direccion) {
     return res.status(400).json({ ok: false, error: 'descripcion, localidad y direccion son requeridos' });
   }
+  if (!referenciaPago || !metodoPago) {
+    return res.status(400).json({ ok: false, error: 'Falta completar el pago (ficticio) antes de enviar' });
+  }
   if (typeof latitud !== 'number' || typeof longitud !== 'number') {
     return res.status(400).json({ ok: false, error: 'latitud/longitud inválidas' });
   }
@@ -54,7 +57,7 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
       .json({ ok: false, error: 'Ya tienes una solicitud activa', solicitud: activa });
   }
 
-  const solicitud = db.crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, descripcion, localidad, direccion, latitud, longitud });
+  const solicitud = db.crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, latitud, longitud });
   res.status(201).json({ ok: true, solicitud });
 });
 

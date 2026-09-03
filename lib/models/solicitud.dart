@@ -86,6 +86,13 @@ class Solicitud {
   /// categoría y los tipos pedidos — ver `lib/core/precios.dart`.
   final int valorTotal;
 
+  /// Datos de la pasarela de pago FICTICIA (ver
+  /// `lib/screens/pago_ficticio_screen.dart`): no hay ningún cobro real,
+  /// ni tarjeta ni dinero de por medio. Solo se guarda una referencia y
+  /// una descripción del "método" simulado para mostrar en el historial.
+  final String referenciaPago;
+  final String metodoPago;
+
   final String descripcion;
   final String localidad;
 
@@ -112,6 +119,8 @@ class Solicitud {
     required this.tipos,
     required this.categoria,
     required this.valorTotal,
+    this.referenciaPago = '',
+    this.metodoPago = '',
     required this.descripcion,
     required this.localidad,
     this.direccion = '',
@@ -136,6 +145,8 @@ class Solicitud {
       'tipos': tipos.map((t) => t.valor).toList(),
       'categoria': categoria.valor,
       'valorTotal': valorTotal,
+      'referenciaPago': referenciaPago,
+      'metodoPago': metodoPago,
       'descripcion': descripcion,
       'localidad': localidad,
       'direccion': direccion,
@@ -159,6 +170,8 @@ class Solicitud {
           ? CategoriaX.fromValor(json['categoria'] as String)
           : Categoria.personal,
       valorTotal: (json['valor_total'] as num?)?.toInt() ?? 0,
+      referenciaPago: json['referencia_pago'] as String? ?? '',
+      metodoPago: json['metodo_pago'] as String? ?? '',
       descripcion: json['descripcion'] as String,
       direccion: json['direccion'] as String? ?? '',
       localidad: json['localidad'] as String,

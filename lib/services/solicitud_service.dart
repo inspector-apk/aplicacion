@@ -65,6 +65,8 @@ class SolicitudService {
     required String descripcion,
     required String localidad,
     required String direccion,
+    required String referenciaPago,
+    required String metodoPago,
   }) async {
     final centro = kLocalidadesBogota[localidad] ?? kBogotaCenter;
     final valorTotal = calcularValorTotal(categoria, tipos);
@@ -78,6 +80,8 @@ class SolicitudService {
             'tipos': tipos.map((t) => t.valor).toList(),
             'categoria': categoria.valor,
             'valorTotal': valorTotal,
+            'referenciaPago': referenciaPago,
+            'metodoPago': metodoPago,
             'descripcion': descripcion.trim(),
             'localidad': localidad,
             'direccion': direccion.trim(),

@@ -316,6 +316,10 @@ class _SolicitudCard extends StatelessWidget {
               icono: Icons.sell_outlined,
               texto:
                   'Valor de referencia (ficticio): ${formatearPesos(solicitud.valorTotal)}'),
+          if (solicitud.metodoPago.isNotEmpty)
+            SolicitudInfoRow(
+                icono: Icons.check_circle_outline,
+                texto: 'Pagado (simulado) · ${solicitud.metodoPago}'),
           const SizedBox(height: 10),
           PrimaryButton(
             label: accionLabel,
