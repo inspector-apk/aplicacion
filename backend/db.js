@@ -80,7 +80,7 @@ function crearSolicitud({ clienteAlias, tipos, categoria, urgencia, valorTotal, 
     .prepare(`
       INSERT INTO solicitudes
         (cliente_alias, tipo, tipos, categoria, urgencia, valor_total, referencia_pago, metodo_pago, descripcion, localidad, direccion, imagen_referencia_base64, latitud, longitud, estado, fecha_creacion, fecha_actualizacion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
     `)
     .run(clienteAlias, tipos[0], JSON.stringify(tipos), categoria, urgencia, valorTotal, referenciaPago || '', metodoPago || '', descripcion, localidad, direccion || '', imagenReferenciaBase64 || null, latitud, longitud, fecha, fecha);
   return obtenerPorId(info.lastInsertRowid);
