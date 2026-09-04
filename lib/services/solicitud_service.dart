@@ -62,6 +62,7 @@ class SolicitudService {
     required String clienteAlias,
     required List<TipoSolicitud> tipos,
     required Categoria categoria,
+    required Urgencia urgencia,
     required String descripcion,
     required String localidad,
     required String direccion,
@@ -70,7 +71,7 @@ class SolicitudService {
     String? imagenReferenciaBase64,
   }) async {
     final centro = kLocalidadesBogota[localidad] ?? kBogotaCenter;
-    final valorTotal = calcularValorTotal(categoria, tipos);
+    final valorTotal = calcularValorTotal(categoria, tipos, urgencia);
 
     final respuesta = await http
         .post(
@@ -80,6 +81,7 @@ class SolicitudService {
             'clienteAlias': clienteAlias,
             'tipos': tipos.map((t) => t.valor).toList(),
             'categoria': categoria.valor,
+            'urgencia': urgencia.valor,
             'valorTotal': valorTotal,
             'referenciaPago': referenciaPago,
             'metodoPago': metodoPago,

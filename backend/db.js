@@ -35,6 +35,7 @@ function agregarColumnaSiFalta(nombre, definicion) {
   }
 }
 agregarColumnaSiFalta('categoria', "TEXT NOT NULL DEFAULT 'personal'");
+agregarColumnaSiFalta('urgencia', "TEXT NOT NULL DEFAULT 'dosDias'");
 agregarColumnaSiFalta('tipos', "TEXT NOT NULL DEFAULT '[\"texto\"]'");
 agregarColumnaSiFalta('valor_total', 'INTEGER NOT NULL DEFAULT 0');
 agregarColumnaSiFalta('respuesta_audio_base64', 'TEXT');
@@ -51,7 +52,7 @@ agregarColumnaSiFalta('imagen_referencia_base64', 'TEXT');
 // filtre por otro camino (ni al colaborador, ni al admin, ni al propio
 // cliente antes de "abrirla").
 const COLUMNAS_SEGURAS = `
-  id, cliente_alias, colaborador_alias, tipos, categoria, valor_total,
+  id, cliente_alias, colaborador_alias, tipos, categoria, urgencia, valor_total,
   referencia_pago, metodo_pago, descripcion, localidad, direccion,
   imagen_referencia_base64, latitud, longitud, estado, fecha_creacion,
   fecha_actualizacion, respuesta_fecha, respuesta_vista
@@ -73,15 +74,15 @@ function conTiposParseados(fila) {
   return { ...fila, tipos };
 }
 
-function crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud }) {
+function crearSolicitud({ clienteAlias, tipos, categoria, urgencia, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud }) {
   const fecha = ahora();
   const info = db
     .prepare(`
       INSERT INTO solicitudes
-        (cliente_alias, tipo, tipos, categoria, valor_total, referencia_pago, metodo_pago, descripcion, localidad, direccion, imagen_referencia_base64, latitud, longitud, estado, fecha_creacion, fecha_actualizacion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
+        (cliente_alias, tipo, tipos, categoria, urgencia, valor_total, referencia_pago, metodo_pago, descripcion, localidad, direccion, imagen_referencia_base64, latitud, longitud, estado, fecha_creacion, fecha_actualizacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)
     `)
-    .run(clienteAlias, tipos[0], JSON.stringify(tipos), categoria, valorTotal, referenciaPago || '', metodoPago || '', descripcion, localidad, direccion || '', imagenReferenciaBase64 || null, latitud, longitud, fecha, fecha);
+    .run(clienteAlias, tipos[0], JSON.stringify(tipos), categoria, urgencia, valorTotal, referenciaPago || '', metodoPago || '', descripcion, localidad, direccion || '', imagenReferenciaBase64 || null, latitud, longitud, fecha, fecha);
   return obtenerPorId(info.lastInsertRowid);
 }
 

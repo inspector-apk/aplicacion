@@ -28,8 +28,28 @@ const Map<Categoria, Map<TipoSolicitud, int>> kPrecios = {
 int precioDe(Categoria categoria, TipoSolicitud tipo) =>
     kPrecios[categoria]![tipo]!;
 
-int calcularValorTotal(Categoria categoria, Iterable<TipoSolicitud> tipos) {
+/// Recargo FICTICIO por rapidez: entre más urgente, más caro.
+const Map<Urgencia, double> kMultiplicadorUrgencia = {
+  Urgencia.unaHora: 1.6,
+  Urgencia.cincoHoras: 1.25,
+  Urgencia.dosDias: 1.0,
+};
+
+double multiplicadorDe(Urgencia urgencia) => kMultiplicadorUrgencia[urgencia]!;
+
+/// Suma el precio base de cada tipo pedido, sin el recargo por
+/// urgencia — se usa para mostrar el precio base de cada chip de tipo.
+int calcularValorBase(Categoria categoria, Iterable<TipoSolicitud> tipos) {
   return tipos.fold(0, (suma, t) => suma + precioDe(categoria, t));
+}
+
+int calcularValorTotal(
+  Categoria categoria,
+  Iterable<TipoSolicitud> tipos, [
+  Urgencia urgencia = Urgencia.dosDias,
+]) {
+  final base = calcularValorBase(categoria, tipos);
+  return (base * multiplicadorDe(urgencia)).round();
 }
 
 /// Comisión FICTICIA de la plataforma: 10% de lo que pagó el cliente.

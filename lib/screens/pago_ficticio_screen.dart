@@ -26,11 +26,13 @@ class ResultadoPagoFicticio {
 class PagoFicticioScreen extends StatefulWidget {
   final Categoria categoria;
   final Set<TipoSolicitud> tipos;
+  final Urgencia urgencia;
 
   const PagoFicticioScreen({
     super.key,
     required this.categoria,
     required this.tipos,
+    required this.urgencia,
   });
 
   @override
@@ -100,7 +102,8 @@ class _PagoFicticioScreenState extends State<PagoFicticioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final valorTotal = calcularValorTotal(widget.categoria, widget.tipos);
+    final valorTotal =
+        calcularValorTotal(widget.categoria, widget.tipos, widget.urgencia);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pago (simulado)')),

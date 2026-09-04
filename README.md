@@ -156,6 +156,14 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Urgencia (qué tan rápido se necesita)**: el Cliente elige "En 1
+  hora", "En 5 horas" o "En 2 días" — cada opción tiene un recargo
+  FICTICIO sobre el precio base (`kMultiplicadorUrgencia` en
+  `lib/core/precios.dart`: x1.6, x1.25 y x1.0 respectivamente). Se
+  guarda en la solicitud (`urgencia`, columna nueva vía migración
+  aditiva) y se ve en el seguimiento del cliente, la tarjeta del
+  colaborador (incluso en la vista previa antes de aceptar) y el panel
+  de administrador.
 - **Vista previa antes de aceptar + cancelación con bloqueo temporal**:
   en "Solicitudes disponibles" (pendientes, sin aceptar), el Colaborador
   solo ve un adelanto: categoría, tipos, localidad general, un

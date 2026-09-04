@@ -498,6 +498,8 @@ class _SolicitudCard extends StatelessWidget {
           SolicitudInfoRow(
               icono: Icons.checklist_outlined, texto: solicitud.tiposEtiqueta),
           SolicitudInfoRow(
+              icono: Icons.bolt_outlined, texto: solicitud.urgencia.etiqueta),
+          SolicitudInfoRow(
               icono: Icons.place_outlined, texto: solicitud.localidad),
           if (vistaPrevia)
             SolicitudInfoRow(

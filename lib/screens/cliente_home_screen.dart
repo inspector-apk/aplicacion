@@ -42,6 +42,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   bool _enviando = false;
 
   Categoria _categoria = Categoria.personal;
+  Urgencia _urgencia = Urgencia.dosDias;
   final Set<TipoSolicitud> _tipos = {TipoSolicitud.texto};
   String? _localidad;
   final _descripcionCtrl = TextEditingController();
@@ -157,7 +158,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     // cobro real) — como haría una app de verdad.
     final resultadoPago = await Navigator.of(context).push<ResultadoPagoFicticio>(
       AppRoutes.slide(
-        PagoFicticioScreen(categoria: _categoria, tipos: _tipos),
+        PagoFicticioScreen(
+            categoria: _categoria, tipos: _tipos, urgencia: _urgencia),
       ),
     );
     if (resultadoPago == null) return; // canceló el pago
@@ -178,6 +180,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         clienteAlias: widget.usuario.alias,
         tipos: tiposOrdenados,
         categoria: _categoria,
+        urgencia: _urgencia,
         descripcion: _descripcionCtrl.text,
         localidad: _localidad!,
         direccion: _direccionCtrl.text,
@@ -294,6 +297,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                     )
                   : _PanelFormulario(
                       categoria: _categoria,
+                      urgencia: _urgencia,
                       tipos: _tipos,
                       localidad: _localidad,
                       descripcionCtrl: _descripcionCtrl,
@@ -302,6 +306,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       cargando: _enviando,
                       onCategoriaChanged: (c) =>
                           setState(() => _categoria = c),
+                      onUrgenciaChanged: (u) => setState(() => _urgencia = u),
                       onTipoToggle: _alternarTipo,
                       onLocalidadChanged: (l) =>
                           setState(() => _localidad = l),
@@ -318,6 +323,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
 
 class _PanelFormulario extends StatelessWidget {
   final Categoria categoria;
+  final Urgencia urgencia;
   final Set<TipoSolicitud> tipos;
   final String? localidad;
   final TextEditingController descripcionCtrl;
@@ -325,6 +331,7 @@ class _PanelFormulario extends StatelessWidget {
   final File? imagenReferencia;
   final bool cargando;
   final ValueChanged<Categoria> onCategoriaChanged;
+  final ValueChanged<Urgencia> onUrgenciaChanged;
   final ValueChanged<TipoSolicitud> onTipoToggle;
   final ValueChanged<String?> onLocalidadChanged;
   final ValueChanged<ImageSource> onElegirImagen;
@@ -333,6 +340,7 @@ class _PanelFormulario extends StatelessWidget {
 
   const _PanelFormulario({
     required this.categoria,
+    required this.urgencia,
     required this.tipos,
     required this.localidad,
     required this.descripcionCtrl,
@@ -340,6 +348,7 @@ class _PanelFormulario extends StatelessWidget {
     required this.imagenReferencia,
     required this.cargando,
     required this.onCategoriaChanged,
+    required this.onUrgenciaChanged,
     required this.onTipoToggle,
     required this.onLocalidadChanged,
     required this.onElegirImagen,
@@ -349,7 +358,7 @@ class _PanelFormulario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valorTotal = calcularValorTotal(categoria, tipos);
+    final valorTotal = calcularValorTotal(categoria, tipos, urgencia);
 
     return MapBottomPanel(
       child: SingleChildScrollView(
@@ -407,6 +416,36 @@ class _PanelFormulario extends StatelessWidget {
                   precio: formatearPesos(precioDe(categoria, t)),
                   seleccionado: tipos.contains(t),
                   onTap: () => onTipoToggle(t),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            '¿Qué tan rápido la necesitas?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Entre más rápido, más alto el valor de referencia.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: Urgencia.values.map((u) {
+              return SizedBox(
+                width: (MediaQuery.of(context).size.width - 40 - 20) / 3,
+                child: _UrgenciaChip(
+                  label: u.etiqueta,
+                  multiplicador: multiplicadorDe(u),
+                  seleccionada: urgencia == u,
+                  onTap: () => onUrgenciaChanged(u),
                 ),
               );
             }).toList(),
@@ -639,6 +678,8 @@ class _PanelSeguimiento extends StatelessWidget {
           SolicitudInfoRow(
               icono: Icons.checklist_outlined, texto: solicitud.tiposEtiqueta),
           SolicitudInfoRow(
+              icono: Icons.bolt_outlined, texto: solicitud.urgencia.etiqueta),
+          SolicitudInfoRow(
               icono: Icons.place_outlined, texto: solicitud.localidad),
           if (solicitud.direccion.isNotEmpty)
             SolicitudInfoRow(
@@ -712,6 +753,68 @@ class _CategoriaChip extends StatelessWidget {
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UrgenciaChip extends StatelessWidget {
+  final String label;
+  final double multiplicador;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  const _UrgenciaChip({
+    required this.label,
+    required this.multiplicador,
+    required this.seleccionada,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final etiquetaRecargo =
+        multiplicador == 1.0 ? 'Estándar' : '+${(((multiplicador - 1) * 100).round())}%';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          color: seleccionada
+              ? AppColors.accent.withOpacity(0.15)
+              : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: seleccionada ? AppColors.accent : AppColors.border,
+            width: seleccionada ? 1.4 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              seleccionada ? Icons.check_circle : Icons.bolt_outlined,
+              color: seleccionada ? AppColors.accent : AppColors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: seleccionada ? AppColors.accent : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              etiquetaRecargo,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+            ),
+          ],
         ),
       ),
     );

@@ -367,8 +367,8 @@ class _ListaSolicitudes extends StatelessWidget {
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
               ),
               Text(
-                '${s.categoria.etiqueta} · Valor de referencia (ficticio): '
-                '${formatearPesos(s.valorTotal)}',
+                '${s.categoria.etiqueta} · ${s.urgencia.etiqueta} · Valor de '
+                'referencia (ficticio): ${formatearPesos(s.valorTotal)}',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
               ),
               if (s.metodoPago.isNotEmpty)

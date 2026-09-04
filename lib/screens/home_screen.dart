@@ -424,6 +424,7 @@ class _SolicitudActivaCard extends StatelessWidget {
           const Divider(height: 22, color: AppColors.border),
           SolicitudInfoRow(icono: Icons.category_outlined, texto: s.categoria.etiqueta),
           SolicitudInfoRow(icono: Icons.checklist_outlined, texto: s.tiposEtiqueta),
+          SolicitudInfoRow(icono: Icons.bolt_outlined, texto: s.urgencia.etiqueta),
           SolicitudInfoRow(icono: Icons.place_outlined, texto: s.localidad),
           if (s.direccion.isNotEmpty)
             SolicitudInfoRow(

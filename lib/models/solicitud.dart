@@ -44,6 +44,29 @@ extension CategoriaX on Categoria {
   }
 }
 
+/// Qué tan rápido necesita el cliente la información: entre más
+/// urgente, más caro (ver `lib/core/precios.dart`).
+enum Urgencia { unaHora, cincoHoras, dosDias }
+
+extension UrgenciaX on Urgencia {
+  String get valor => name;
+
+  String get etiqueta {
+    switch (this) {
+      case Urgencia.unaHora:
+        return 'En 1 hora';
+      case Urgencia.cincoHoras:
+        return 'En 5 horas';
+      case Urgencia.dosDias:
+        return 'En 2 días';
+    }
+  }
+
+  static Urgencia fromValor(String valor) {
+    return Urgencia.values.firstWhere((u) => u.valor == valor);
+  }
+}
+
 enum EstadoSolicitud { pendiente, aceptada, completada, cancelada }
 
 extension EstadoSolicitudX on EstadoSolicitud {
@@ -82,8 +105,12 @@ class Solicitud {
   final List<TipoSolicitud> tipos;
   final Categoria categoria;
 
+  /// Qué tan rápido necesita el cliente la información.
+  final Urgencia urgencia;
+
   /// Valor ficticio (no es un cobro real) calculado a partir de la
-  /// categoría y los tipos pedidos — ver `lib/core/precios.dart`.
+  /// categoría, los tipos pedidos y la urgencia — ver
+  /// `lib/core/precios.dart`.
   final int valorTotal;
 
   /// Datos de la pasarela de pago FICTICIA (ver
@@ -125,6 +152,7 @@ class Solicitud {
     this.colaboradorAlias,
     required this.tipos,
     required this.categoria,
+    this.urgencia = Urgencia.dosDias,
     required this.valorTotal,
     this.referenciaPago = '',
     this.metodoPago = '',
@@ -152,6 +180,7 @@ class Solicitud {
       'clienteAlias': clienteAlias,
       'tipos': tipos.map((t) => t.valor).toList(),
       'categoria': categoria.valor,
+      'urgencia': urgencia.valor,
       'valorTotal': valorTotal,
       'referenciaPago': referenciaPago,
       'metodoPago': metodoPago,
@@ -179,6 +208,9 @@ class Solicitud {
       categoria: json['categoria'] != null
           ? CategoriaX.fromValor(json['categoria'] as String)
           : Categoria.personal,
+      urgencia: json['urgencia'] != null
+          ? UrgenciaX.fromValor(json['urgencia'] as String)
+          : Urgencia.dosDias,
       valorTotal: (json['valor_total'] as num?)?.toInt() ?? 0,
       referenciaPago: json['referencia_pago'] as String? ?? '',
       metodoPago: json['metodo_pago'] as String? ?? '',

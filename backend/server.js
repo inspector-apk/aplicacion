@@ -23,9 +23,10 @@ function requiereApiKey(req, res, next) {
 
 const TIPOS_VALIDOS = ['texto', 'imagen', 'audio', 'video'];
 const CATEGORIAS_VALIDAS = ['personal', 'comercial', 'industrial'];
+const URGENCIAS_VALIDAS = ['unaHora', 'cincoHoras', 'dosDias'];
 
 app.post('/api/solicitudes', requiereApiKey, (req, res) => {
-  const { clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud } = req.body;
+  const { clienteAlias, tipos, categoria, urgencia, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud } = req.body;
 
   if (!clienteAlias || typeof clienteAlias !== 'string') {
     return res.status(400).json({ ok: false, error: 'clienteAlias es requerido' });
@@ -35,6 +36,9 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
   }
   if (!CATEGORIAS_VALIDAS.includes(categoria)) {
     return res.status(400).json({ ok: false, error: 'categoria inválida' });
+  }
+  if (!URGENCIAS_VALIDAS.includes(urgencia)) {
+    return res.status(400).json({ ok: false, error: 'urgencia inválida' });
   }
   if (typeof valorTotal !== 'number' || valorTotal < 0) {
     return res.status(400).json({ ok: false, error: 'valorTotal inválido' });
@@ -57,7 +61,7 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
       .json({ ok: false, error: 'Ya tienes una solicitud activa', solicitud: activa });
   }
 
-  const solicitud = db.crearSolicitud({ clienteAlias, tipos, categoria, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud });
+  const solicitud = db.crearSolicitud({ clienteAlias, tipos, categoria, urgencia, valorTotal, referenciaPago, metodoPago, descripcion, localidad, direccion, imagenReferenciaBase64, latitud, longitud });
   res.status(201).json({ ok: true, solicitud });
 });
 
