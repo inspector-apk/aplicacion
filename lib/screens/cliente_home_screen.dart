@@ -9,6 +9,7 @@ import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/bogota_localidades.dart';
 import '../core/precios.dart';
+import '../core/sugerencias_descripcion.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
 import '../services/content_moderation_service.dart';
@@ -450,6 +451,40 @@ class _PanelFormulario extends StatelessWidget {
               );
             }).toList(),
           ),
+          const SizedBox(height: 18),
+          const Text(
+            'Sugerencias (opcional)',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Toca una para agregarla a tu descripción — luego puedes '
+            'editarla como quieras.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: (kSugerenciasDescripcion[categoria] ?? []).length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final sugerencia = kSugerenciasDescripcion[categoria]![i];
+                return ActionChip(
+                  label: Text(sugerencia, style: const TextStyle(fontSize: 12)),
+                  backgroundColor: AppColors.surfaceVariant,
+                  side: const BorderSide(color: AppColors.border),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  onPressed: () => _agregarSugerencia(descripcionCtrl, sugerencia),
+                );
+              },
+            ),
+          ),
           const SizedBox(height: 14),
           TextField(
             controller: descripcionCtrl,
@@ -598,6 +633,20 @@ class _PanelFormulario extends StatelessWidget {
       case TipoSolicitud.video:
         return Icons.videocam_outlined;
     }
+  }
+
+  /// Agrega la sugerencia al final del texto (si ya la tiene, no la
+  /// repite); si el campo está vacío, simplemente la pone.
+  void _agregarSugerencia(TextEditingController ctrl, String sugerencia) {
+    final actual = ctrl.text.trim();
+    if (actual.isEmpty) {
+      ctrl.text = sugerencia;
+    } else if (!actual.contains(sugerencia)) {
+      ctrl.text = '$actual. $sugerencia';
+    } else {
+      return;
+    }
+    ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
   }
 }
 

@@ -318,6 +318,12 @@ instales la app.
   representan colaboradores reales, son puramente visuales para que el
   mapa nunca se vea vacío, con una pequeña variación aleatoria en cada
   refresco para dar sensación de movimiento.
+- **Sugerencias de descripción**: sobre el campo de descripción del
+  formulario del Cliente hay chips con frases comunes (un "diccionario"
+  por categoría — Personal/Comercial/Industrial piden cosas distintas —
+  en `lib/core/sugerencias_descripcion.dart`). Son solo ayuda: tocar una
+  la agrega al texto (sin perder lo ya escrito), pero el cliente sigue
+  pudiendo escribir libremente lo que necesite.
 - **Bloqueo de capturas de pantalla**: en Android, la app bloquea por
   completo las capturas y grabaciones de pantalla en cualquier momento
   (`FLAG_SECURE` en `MainActivity.kt` — ver la sección de compilación
