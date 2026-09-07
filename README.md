@@ -295,6 +295,10 @@ instales la app.
   - Dimensiones "de laboratorio" (cuadrada y múltiplo exacto de 64px,
     típico de modelos de difusión), leídas de la cabecera del archivo
     sin decodificar toda la imagen.
+  - Submuestreo de color JPEG (4:2:0 típico de cámaras de celular vs.
+    4:4:4 típico de herramientas de IA/edición que no vienen de un
+    sensor), leído de los factores de muestreo del propio encabezado
+    SOF — también sin decodificar la imagen completa.
   - Ruido de píxeles: decodifica la foto (en un isolate aparte, para no
     trabar la interfaz) y mide cuánto grano de alta frecuencia queda en
     sus zonas más planas (cielos, fondos) — una IA suele dejarlas

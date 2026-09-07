@@ -28,16 +28,23 @@ class ResultadoDeteccionIA {
 const _kMarcadoresGeneradores = [
   'stable diffusion',
   'stablediffusion',
+  'sdxl',
+  'sd3',
+  'pony diffusion',
+  'juggernaut',
+  'realistic vision',
   'midjourney',
   'dall-e',
   'dalle',
   'gpt-image',
   'sora',
   'novelai',
+  'waifu diffusion',
   'invokeai',
   'comfyui',
   'automatic1111',
   'firefly',
+  'adobe express',
   'nightcafe',
   'leonardo.ai',
   'leonardo ai',
@@ -56,6 +63,7 @@ const _kMarcadoresGeneradores = [
   'flux1',
   'recraft',
   'canva magic media',
+  'canva ai',
   'meta ai',
   'grok imagine',
   'luma ai',
@@ -65,11 +73,27 @@ const _kMarcadoresGeneradores = [
   'kling ai',
   'pika labs',
   'generative fill',
+  'artbreeder',
+  'wombo dream',
+  'starryai',
+  'dreamlike.art',
+  'deep dream generator',
+  'picsart ai',
+  'remini ai',
+  'lensa ai',
+  'civitai',
 ];
 
 /// Términos "genéricos" de generación (aparecen junto a un prompt, ej.
 /// en el chunk "parameters" que deja el WebUI de Stable Diffusion).
-const _kMarcadoresGenericosIA = ['negative prompt:', 'cfg scale:', 'sampler:'];
+const _kMarcadoresGenericosIA = [
+  'negative prompt:',
+  'cfg scale:',
+  'sampler:',
+  'denoising strength:',
+  'model hash:',
+  'clip skip:',
+];
 
 /// El estándar IPTC/C2PA ("Content Credentials") que cada vez más
 /// generadores (OpenAI, Google, Microsoft, Adobe...) usan por norma
@@ -146,12 +170,23 @@ class DeteccionIAService {
     // imágenes cuadradas y múltiplos exactos de 64 píxeles (limitación
     // técnica de los modelos de difusión); una foto de cámara real casi
     // nunca cae justo en esa combinación. Señal débil, solo de apoyo.
-    final dimensiones = _dimensionesDeCabecera(bytes);
-    if (dimensiones != null) {
-      final (ancho, alto) = dimensiones;
-      final esCuadrada = ancho == alto;
-      final multiploDe64 = ancho % 64 == 0 && alto % 64 == 0;
+    final info = _infoSofJpeg(bytes);
+    if (info != null) {
+      final esCuadrada = info.ancho == info.alto;
+      final multiploDe64 = info.ancho % 64 == 0 && info.alto % 64 == 0;
       if (esCuadrada && multiploDe64) puntosIA += 10;
+
+      // Submuestreo de color: casi toda cámara de celular graba en
+      // 4:2:0 (el ojo distingue peor el color que el brillo, así que
+      // los sensores/codificadores de cámara comprimen el color a la
+      // mitad); muchas herramientas de IA/edición exportan en 4:4:4
+      // (sin submuestrear) porque no vienen de un sensor de cámara.
+      // Señal débil: hoy también hay apps de cámara que usan 4:4:4.
+      if (info.submuestreo420) {
+        puntosReal += 10;
+      } else if (info.sinSubmuestreo444) {
+        puntosIA += 8;
+      }
     }
 
     // 4) Ruido de los píxeles: en un aparte (isolate) para no trabar la
@@ -203,14 +238,15 @@ class DeteccionIAService {
     return latin1.decode(bytes, allowInvalid: true).toLowerCase();
   }
 
-  /// Ancho/alto reales del archivo, leídos de la cabecera (JPEG SOF o
-  /// PNG IHDR) sin decodificar toda la imagen — barato y rápido.
-  static (int, int)? _dimensionesDeCabecera(Uint8List bytes) {
+  /// Ancho/alto y submuestreo de color, leídos de la cabecera (JPEG SOF
+  /// o PNG IHDR) sin decodificar toda la imagen — barato y rápido. En
+  /// PNG no hay submuestreo que leer (siempre viaja a full color).
+  static _InfoImagen? _infoSofJpeg(Uint8List bytes) {
     try {
       if (_esPng(bytes) && bytes.length >= 24) {
         final ancho = ByteData.sublistView(bytes, 16, 20).getUint32(0);
         final alto = ByteData.sublistView(bytes, 20, 24).getUint32(0);
-        return (ancho, alto);
+        return _InfoImagen(ancho: ancho, alto: alto);
       }
       if (_esJpeg(bytes)) {
         var i = 2;
@@ -228,7 +264,25 @@ class DeteccionIAService {
           if (esSof) {
             final alto = ByteData.sublistView(bytes, i + 5, i + 7).getUint16(0);
             final ancho = ByteData.sublistView(bytes, i + 7, i + 9).getUint16(0);
-            return (ancho, alto);
+            final numComponentes = bytes[i + 9];
+            bool? submuestreo420;
+            bool? sinSubmuestreo444;
+            if (numComponentes == 3 && i + 9 + 1 + numComponentes * 3 <= bytes.length) {
+              // Por componente: id(1), factores de muestreo(1, nibble alto=H nibble bajo=V), tabla(1).
+              final factoresY = bytes[i + 9 + 1 + 1];
+              final factoresCb = bytes[i + 9 + 1 + 4];
+              final factoresCr = bytes[i + 9 + 1 + 7];
+              submuestreo420 =
+                  factoresY == 0x22 && factoresCb == 0x11 && factoresCr == 0x11;
+              sinSubmuestreo444 =
+                  factoresY == 0x11 && factoresCb == 0x11 && factoresCr == 0x11;
+            }
+            return _InfoImagen(
+              ancho: ancho,
+              alto: alto,
+              submuestreo420: submuestreo420 ?? false,
+              sinSubmuestreo444: sinSubmuestreo444 ?? false,
+            );
           }
           i += 2 + longitudSegmento;
         }
@@ -247,6 +301,19 @@ class DeteccionIAService {
     }
     return true;
   }
+}
+
+class _InfoImagen {
+  final int ancho;
+  final int alto;
+  final bool submuestreo420;
+  final bool sinSubmuestreo444;
+  const _InfoImagen({
+    required this.ancho,
+    required this.alto,
+    this.submuestreo420 = false,
+    this.sinSubmuestreo444 = false,
+  });
 }
 
 /// Corre en un isolate aparte (vía `compute`). Decodifica la imagen,
