@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
@@ -49,6 +50,10 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   // mapa nunca se vea vacío, como los carros de Uber/Didi.
   late final List<LatLng> _anclasDecorativas;
 
+  final _mapController = MapController();
+  final _distancia = const Distance();
+  LatLng? _miPosicion;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +84,7 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
     _actualizacionPeriodica?.cancel();
     _envioUbicacion?.cancel();
     _cronometroBloqueo?.cancel();
+    _mapController.dispose();
     UbicacionService.desconectar(widget.usuario.alias);
     super.dispose();
   }
@@ -104,6 +110,10 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
     try {
       if (!await LocationService.tienePermisoConcedido()) return;
       final posicion = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        setState(() =>
+            _miPosicion = LatLng(posicion.latitude, posicion.longitude));
+      }
       await UbicacionService.enviarUbicacion(
         colaboradorAlias: widget.usuario.alias,
         latitud: posicion.latitude,
@@ -113,6 +123,22 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
       // Sin ubicación disponible en este ciclo: no es crítico, no
       // afecta el resto de la pantalla.
     }
+  }
+
+  /// Distancia entre el colaborador y la solicitud, ya formateada
+  /// ("850 m" o "3.2 km"). null si aún no se tiene la ubicación propia.
+  String? _distanciaHasta(Solicitud s) {
+    final miPosicion = _miPosicion;
+    if (miPosicion == null) return null;
+    final punto = kLocalidadesBogota[s.localidad] ?? kBogotaCenter;
+    final metros = _distancia.as(LengthUnit.Meter, miPosicion, punto);
+    if (metros < 1000) return '${metros.round()} m de tu ubicación';
+    return '${(metros / 1000).toStringAsFixed(1)} km de tu ubicación';
+  }
+
+  void _verEnElMapa(Solicitud s) {
+    final punto = kLocalidadesBogota[s.localidad] ?? kBogotaCenter;
+    _mapController.move(punto, 15);
   }
 
   Future<void> _cargarDatos() async {
@@ -255,12 +281,18 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
       // nunca se vea vacío, como los carros de Uber/Didi.
       ...conVariacionAleatoria(_anclasDecorativas)
           .map((p) => buildColaboradorMarker(punto: p)),
+      // La posición real (GPS) del colaborador, para que se ubique
+      // frente a las solicitudes.
+      if (_miPosicion != null) buildMiUbicacionMarker(punto: _miPosicion!),
     ];
 
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: BogotaMap(marcadores: marcadores)),
+          Positioned.fill(
+            child: BogotaMap(
+                marcadores: marcadores, controller: _mapController),
+          ),
           MapTopBar(alias: widget.usuario.alias, onPerfil: _abrirPerfil),
           if (!_cargandoInicial)
             Positioned(
@@ -276,6 +308,8 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
                   onAceptar: _aceptar,
                   onResponder: _responder,
                   onCancelar: _cancelarAceptada,
+                  distanciaHasta: _distanciaHasta,
+                  onVerEnMapa: _verEnElMapa,
                 ),
               ),
             ),
@@ -360,6 +394,8 @@ class _ListaSolicitudes extends StatelessWidget {
   final ValueChanged<Solicitud> onAceptar;
   final ValueChanged<Solicitud> onResponder;
   final ValueChanged<Solicitud> onCancelar;
+  final String? Function(Solicitud) distanciaHasta;
+  final ValueChanged<Solicitud> onVerEnMapa;
 
   const _ListaSolicitudes({
     required this.pendientes,
@@ -368,6 +404,8 @@ class _ListaSolicitudes extends StatelessWidget {
     required this.onAceptar,
     required this.onResponder,
     required this.onCancelar,
+    required this.distanciaHasta,
+    required this.onVerEnMapa,
   });
 
   @override
@@ -410,6 +448,8 @@ class _ListaSolicitudes extends StatelessWidget {
                 accionLabel: 'RESPONDER',
                 onAccion: () => onResponder(s),
                 onCancelar: () => onCancelar(s),
+                distancia: distanciaHasta(s),
+                onVerEnMapa: () => onVerEnMapa(s),
               ),
             ),
             const SizedBox(height: 18),
@@ -448,6 +488,8 @@ class _ListaSolicitudes extends StatelessWidget {
                 accionLabel: 'ACEPTAR',
                 onAccion: () => onAceptar(s),
                 onCancelar: null,
+                distancia: distanciaHasta(s),
+                onVerEnMapa: () => onVerEnMapa(s),
               ),
             ),
         ],
@@ -468,6 +510,8 @@ class _SolicitudCard extends StatelessWidget {
   final String accionLabel;
   final VoidCallback onAccion;
   final VoidCallback? onCancelar;
+  final String? distancia;
+  final VoidCallback onVerEnMapa;
 
   const _SolicitudCard({
     required this.solicitud,
@@ -476,6 +520,8 @@ class _SolicitudCard extends StatelessWidget {
     required this.accionLabel,
     required this.onAccion,
     required this.onCancelar,
+    required this.distancia,
+    required this.onVerEnMapa,
   });
 
   @override
@@ -501,6 +547,8 @@ class _SolicitudCard extends StatelessWidget {
               icono: Icons.bolt_outlined, texto: solicitud.urgencia.etiqueta),
           SolicitudInfoRow(
               icono: Icons.place_outlined, texto: solicitud.localidad),
+          if (distancia != null)
+            SolicitudInfoRow(icono: Icons.social_distance_outlined, texto: distancia!),
           if (vistaPrevia)
             SolicitudInfoRow(
                 icono: Icons.notes_outlined, texto: _adelanto(solicitud.descripcion))
@@ -524,6 +572,11 @@ class _SolicitudCard extends StatelessWidget {
               icono: Icons.payments_outlined,
               texto: 'Vas a ganar: ${formatearPesos(ganancia)}'),
           const SizedBox(height: 10),
+          OutlineActionButton(
+            label: 'VER EN EL MAPA',
+            onPressed: onVerEnMapa,
+          ),
+          const SizedBox(height: 8),
           PrimaryButton(
             label: accionLabel,
             isLoading: cargando,

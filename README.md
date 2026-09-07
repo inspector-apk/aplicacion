@@ -156,6 +156,15 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Distancia y ubicación en el mapa (Colaborador)**: mientras tiene la
+  pantalla de inicio abierta, el Colaborador ve su propia posición GPS
+  en el mapa (punto azul, `buildMiUbicacionMarker` en
+  `lib/widgets/bogota_map.dart`) y, en cada solicitud, cuánto le falta
+  para llegar ("850 m de tu ubicación" / "3.2 km de tu ubicación" —
+  calculado con `package:latlong2`'s `Distance`, sin ningún servicio
+  externo). Cada tarjeta de solicitud tiene un botón "VER EN EL MAPA"
+  que centra el mapa en el punto exacto de esa solicitud
+  (`MapController` en `colaborador_home_screen.dart`).
 - **Urgencia (qué tan rápido se necesita)**: el Cliente elige "En 1
   hora", "En 5 horas" o "En 2 días" — cada opción tiene un recargo
   FICTICIO sobre el precio base (`kMultiplicadorUrgencia` en

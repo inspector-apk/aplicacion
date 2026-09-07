@@ -15,17 +15,20 @@ class BogotaMap extends StatelessWidget {
   final List<Marker> marcadores;
   final LatLng? centro;
   final double zoom;
+  final MapController? controller;
 
   const BogotaMap({
     super.key,
     this.marcadores = const [],
     this.centro,
     this.zoom = 12,
+    this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
+      mapController: controller,
       options: MapOptions(
         initialCenter: centro ?? kBogotaCenter,
         initialZoom: zoom,
@@ -56,6 +59,26 @@ Marker buildPinMarker({
     width: 42,
     height: 42,
     child: Icon(icon, color: color, size: 38),
+  );
+}
+
+/// La posición real (GPS) de quien tiene la app abierta — se usa para
+/// que el colaborador se ubique en el mapa frente a las solicitudes.
+Marker buildMiUbicacionMarker({required LatLng punto}) {
+  return Marker(
+    point: punto,
+    width: 26,
+    height: 26,
+    child: Container(
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(color: Colors.blue.withOpacity(0.5), blurRadius: 8),
+        ],
+      ),
+    ),
   );
 }
 
