@@ -68,7 +68,7 @@ generan por ti en segundos si necesitas recompilar.
    aparece solo si el usuario aún no tiene rol asignado; guarda la
    elección (Colaborador / Cliente) en SQLite y no se vuelve a preguntar.
 6. **Inicio Cliente** (`lib/screens/cliente_home_screen.dart`) — mapa de
-   Bogotá estilo Uber/inDrive con un panel inferior: si no hay una
+   Bogotá con un panel inferior: si no hay una
    solicitud activa, muestra el formulario para crear una (texto o
    imagen, descripción, localidad); si ya hay una, muestra su
    seguimiento en tiempo real (estado, tipo, localidad, botón cancelar).
@@ -159,8 +159,7 @@ instales la app.
   memoria mientras la app está abierta.
 ## Solicitudes y mapa
 
-- **Cliente pide, Colaborador atiende** (como pasajero/conductor en
-  Uber): el Cliente llena el formulario (categoría, uno o varios tipos de
+- **Cliente pide, Colaborador atiende**: el Cliente llena el formulario (categoría, uno o varios tipos de
   contenido, descripción, localidad) y la solicitud queda `pendiente`;
   **todos** los Colaboradores la ven en su lista de "Solicitudes
   disponibles"; el primero que la `acepta` se la gana (transacción
@@ -319,7 +318,7 @@ instales la app.
   lo marca como "no concluyente" (50/50). Si el % de IA llega a 60% o
   más, el colaborador debe confirmar con un checkbox que la foto es
   real antes de poder enviarla.
-- **Colaboradores en el mapa (estilo Uber/Didi)**: mientras un
+- **Colaboradores en el mapa**: mientras un
   Colaborador tiene su pantalla de inicio abierta ("disponible"), la app
   envía su posición cada 15s (`lib/services/ubicacion_service.dart`) y el
   Cliente los ve como íconos de lupa dorados moviéndose por el mapa antes

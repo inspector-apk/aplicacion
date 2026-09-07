@@ -77,7 +77,7 @@ extension EstadoSolicitudX on EstadoSolicitud {
       case EstadoSolicitud.pendiente:
         return 'Buscando colaborador';
       case EstadoSolicitud.aceptada:
-        return 'Colaborador en camino';
+        return 'Colaborador atendiendo tu solicitud';
       case EstadoSolicitud.completada:
         return 'Completada';
       case EstadoSolicitud.cancelada:

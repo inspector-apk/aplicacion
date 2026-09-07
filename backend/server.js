@@ -213,9 +213,9 @@ app.delete('/api/solicitudes/:id', requiereApiKey, (req, res) => {
 });
 
 // El colaborador envía su posición mientras tiene la pantalla de inicio
-// abierta ("disponible"), para que los clientes lo vean en el mapa como
-// los carros de Uber/Didi. Se guarda solo en memoria (ver ubicaciones.js)
-// y expira sola si deja de enviarse.
+// abierta ("disponible"), para que los clientes lo vean en el mapa. Se
+// guarda solo en memoria (ver ubicaciones.js) y expira sola si deja de
+// enviarse.
 app.post('/api/colaboradores/ubicacion', requiereApiKey, (req, res) => {
   const { colaboradorAlias, latitud, longitud } = req.body;
   if (!colaboradorAlias || typeof colaboradorAlias !== 'string') {

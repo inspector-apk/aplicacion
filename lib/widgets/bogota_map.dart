@@ -7,10 +7,10 @@ import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/bogota_localidades.dart';
 
-/// Mapa de Bogotá reutilizable (estilo Uber/inDrive: mapa a pantalla
-/// completa detrás, con contenido superpuesto encima). Usa mosaicos de
-/// OpenStreetMap, así que necesita conexión a internet para verse; los
-/// datos de la app (usuarios, solicitudes) siguen siendo 100% locales.
+/// Mapa de Bogotá reutilizable: mapa a pantalla completa detrás, con
+/// contenido superpuesto encima. Usa mosaicos de OpenStreetMap, así que
+/// necesita conexión a internet para verse; los datos de la app
+/// (usuarios, solicitudes) siguen siendo 100% locales.
 class BogotaMap extends StatelessWidget {
   final List<Marker> marcadores;
   final LatLng? centro;
@@ -85,11 +85,10 @@ Marker buildMiUbicacionMarker({required LatLng punto}) {
 final _rngDecorativo = math.Random();
 
 /// Puntos de ambiente: NO representan colaboradores reales, son solo
-/// para que el mapa nunca se vea vacío (como Uber/Didi, que siempre
-/// muestran varios carros alrededor aunque ninguno esté cerca todavía).
-/// Se eligen una vez por pantalla (anclas fijas repartidas por Bogotá)
-/// y luego se les aplica una pequeña variación aleatoria cada vez que
-/// se piden, para dar sensación de movimiento.
+/// para que el mapa nunca se vea vacío aunque ninguno esté cerca
+/// todavía. Se eligen una vez por pantalla (anclas fijas repartidas por
+/// Bogotá) y luego se les aplica una pequeña variación aleatoria cada
+/// vez que se piden, para dar sensación de movimiento.
 List<LatLng> anclasDecorativasColaboradores({int cantidad = 6}) {
   final centros = kLocalidadesBogota.values.toList()
     ..shuffle(_rngDecorativo);
@@ -104,9 +103,8 @@ List<LatLng> conVariacionAleatoria(List<LatLng> anclas) {
   }).toList();
 }
 
-/// Colaborador disponible en el mapa, al estilo de los carros de
-/// Uber/Didi — pero con la lupa de "Inspector" en vez de un vehículo,
-/// dentro de una placa dorada como el resto de la identidad de la app.
+/// Colaborador disponible en el mapa: la lupa de "Inspector" dentro de
+/// una placa dorada, como el resto de la identidad de la app.
 Marker buildColaboradorMarker({required LatLng punto}) {
   return Marker(
     point: punto,

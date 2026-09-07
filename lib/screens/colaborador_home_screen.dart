@@ -26,8 +26,8 @@ import 'responder_solicitud_screen.dart';
 import 'splash_screen.dart';
 
 /// Pantalla principal del rol Colaborador: mapa de Bogotá con las
-/// solicitudes disponibles (como el conductor viendo viajes en Uber),
-/// más las que ya aceptó y tiene en curso.
+/// solicitudes disponibles para atender, más las que ya aceptó y tiene
+/// en curso.
 class ColaboradorHomeScreen extends StatefulWidget {
   final Usuario usuario;
   const ColaboradorHomeScreen({super.key, required this.usuario});
@@ -47,7 +47,7 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   Timer? _cronometroBloqueo;
 
   // Puntos "de ambiente": no son colaboradores reales, solo para que el
-  // mapa nunca se vea vacío, como los carros de Uber/Didi.
+  // mapa nunca se vea vacío.
   late final List<LatLng> _anclasDecorativas;
 
   final _mapController = MapController();
@@ -73,7 +73,7 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
 
     // Mientras esta pantalla está abierta el colaborador cuenta como
     // "disponible": se envía su posición aproximada cada 15s para que
-    // los clientes lo vean en el mapa, como los carros de Uber/Didi.
+    // los clientes lo vean en el mapa.
     _enviarUbicacionPropia();
     _envioUbicacion =
         Timer.periodic(const Duration(seconds: 15), (_) => _enviarUbicacionPropia());
@@ -275,10 +275,10 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
       ..._enCurso.map((s) => buildPinMarker(
             punto: kLocalidadesBogota[s.localidad] ?? kBogotaCenter,
             color: AppColors.success,
-            icon: Icons.directions_walk_rounded,
+            icon: Icons.fact_check_outlined,
           )),
       // De ambiente: no son colaboradores reales, solo para que el mapa
-      // nunca se vea vacío, como los carros de Uber/Didi.
+      // nunca se vea vacío.
       ...conVariacionAleatoria(_anclasDecorativas)
           .map((p) => buildColaboradorMarker(punto: p)),
       // La posición real (GPS) del colaborador, para que se ubique

@@ -353,8 +353,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Tarjeta al estilo Uber que muestra, en el perfil del Cliente, si hay
-/// una solicitud activa y en qué va su estado.
+/// Tarjeta que muestra, en el perfil del Cliente, si hay una solicitud
+/// activa y en qué va su estado.
 class _SolicitudActivaCard extends StatelessWidget {
   final Solicitud? solicitud;
   final bool cargando;
@@ -406,7 +406,7 @@ class _SolicitudActivaCard extends StatelessWidget {
               Icon(
                 esPendiente
                     ? Icons.hourglass_top_rounded
-                    : Icons.directions_walk_rounded,
+                    : Icons.fact_check_outlined,
                 color: AppColors.accent,
                 size: 20,
               ),

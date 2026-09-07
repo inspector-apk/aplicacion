@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/backend_config.dart';
 
 /// Posición aproximada de un colaborador disponible, para pintarlo en
-/// el mapa del cliente como los carros de Uber/Didi.
+/// el mapa del cliente.
 class ColaboradorCercano {
   final String colaboradorAlias;
   final LatLng punto;

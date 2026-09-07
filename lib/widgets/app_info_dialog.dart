@@ -35,15 +35,16 @@ Future<void> mostrarInfoDeLaApp(BuildContext context) {
             const SizedBox(height: 10),
             const _PuntoInfo(
               icono: Icons.person_outline,
-              texto: 'Cliente: solicita texto o imagen de una localidad '
-                  '(describe qué necesita y dónde) y le da seguimiento a su '
-                  'solicitud, como pedir un viaje en Uber.',
+              texto: 'Cliente: solicita texto, imagen, audio o video de una '
+                  'localidad (describe qué necesita y dónde) y le da '
+                  'seguimiento a su solicitud hasta recibir la información.',
             ),
             const SizedBox(height: 8),
             const _PuntoInfo(
               icono: Icons.search,
               texto: 'Colaborador: ve las solicitudes disponibles en el '
-                  'mapa, las acepta y las atiende, como el conductor.',
+                  'mapa, acepta la que quiera atender y entrega la '
+                  'información solicitada.',
             ),
             const SizedBox(height: 14),
             const Text(

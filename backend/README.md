@@ -110,7 +110,7 @@ propio límite de tamaño de body, revisa que también lo permita
 - `POST /api/solicitudes/:id/cancelar` (`clienteAlias`) — el cliente cancela su propia solicitud pendiente
 - `GET /api/solicitudes/todas` — todas, para el panel de administrador (tampoco incluye el contenido de las respuestas)
 - `DELETE /api/solicitudes/:id` — elimina una solicitud, para el panel de administrador
-- `POST /api/colaboradores/ubicacion` — el colaborador envía su posición mientras está "disponible" (`colaboradorAlias, latitud, longitud`), para mostrarlo en el mapa del cliente como los carros de Uber/Didi
+- `POST /api/colaboradores/ubicacion` — el colaborador envía su posición mientras está "disponible" (`colaboradorAlias, latitud, longitud`), para mostrarlo en el mapa del cliente
 - `POST /api/colaboradores/desconectar` — el colaborador avisa que ya no está disponible (`colaboradorAlias`)
 - `GET /api/colaboradores/cercanos` — posiciones aproximadas y difuminadas de los colaboradores disponibles ahora mismo
 

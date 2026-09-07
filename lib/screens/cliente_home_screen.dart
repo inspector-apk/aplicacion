@@ -26,9 +26,8 @@ import 'pago_ficticio_screen.dart';
 import 'ver_respuesta_screen.dart';
 
 /// Pantalla principal del rol Cliente: mapa de Bogotá con un panel
-/// inferior, al estilo inDrive/Uber. Si no hay una solicitud activa
-/// muestra el formulario para crear una; si ya hay una, muestra su
-/// estado (como la pantalla de "buscando conductor" de Uber).
+/// inferior. Si no hay una solicitud activa muestra el formulario para
+/// crear una; si ya hay una, muestra su estado y seguimiento.
 class ClienteHomeScreen extends StatefulWidget {
   final Usuario usuario;
   const ClienteHomeScreen({super.key, required this.usuario});
@@ -54,7 +53,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   List<ColaboradorCercano> _colaboradoresCercanos = [];
 
   // Puntos "de ambiente": no son colaboradores reales, solo para que el
-  // mapa nunca se vea vacío, como los carros de Uber/Didi.
+  // mapa nunca se vea vacío.
   late final List<LatLng> _anclasDecorativas;
 
   @override
@@ -67,7 +66,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     _actualizacionPeriodica =
         Timer.periodic(const Duration(seconds: 6), (_) => _cargarSolicitudActiva());
 
-    // Colaboradores disponibles cerca, como los carros de Uber/Didi.
+    // Colaboradores disponibles cerca.
     _cargarColaboradoresCercanos();
     _actualizacionColaboradores = Timer.periodic(
         const Duration(seconds: 15), (_) => _cargarColaboradoresCercanos());
@@ -265,8 +264,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
           punto: kLocalidadesBogota[_solicitudActiva!.localidad] ??
               kBogotaCenter,
         ),
-      // Solo se muestran mientras no hay una solicitud activa (como en
-      // Uber: ves los carros disponibles antes de pedir el viaje).
+      // Solo se muestran mientras no hay una solicitud activa: ves los
+      // colaboradores disponibles antes de pedir la tuya.
       if (_solicitudActiva == null) ...[
         ..._colaboradoresCercanos
             .map((c) => buildColaboradorMarker(punto: c.punto)),
@@ -686,7 +685,7 @@ class _PanelSeguimiento extends StatelessWidget {
                       ? Icons.mark_email_unread_outlined
                       : esPendiente
                           ? Icons.hourglass_top_rounded
-                          : Icons.directions_walk_rounded,
+                          : Icons.fact_check_outlined,
                   color: Colors.black,
                 ),
               ),

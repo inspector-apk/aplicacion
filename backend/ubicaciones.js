@@ -1,7 +1,7 @@
 /**
  * Posición aproximada de los colaboradores "disponibles" (con su pantalla
- * de inicio abierta), para mostrarlos en el mapa del Cliente como hace
- * Uber/Didi con sus carros. A propósito NO se guarda en la base de datos
+ * de inicio abierta), para mostrarlos en el mapa del Cliente. A propósito
+ * NO se guarda en la base de datos
  * ni se persiste en disco: es presencia efímera en memoria, se pierde si
  * el backend se reinicia y cada posición expira sola a los pocos minutos
  * si el colaborador deja de enviarla (cierra la app, se desconecta, etc.).
