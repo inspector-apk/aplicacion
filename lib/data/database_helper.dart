@@ -246,4 +246,16 @@ class DatabaseHelper {
       whereArgs: [id],
     );
   }
+
+  /// Quita un bloqueo temporal antes de tiempo (herramienta de soporte
+  /// del panel de administrador).
+  Future<void> quitarBloqueo(int id) async {
+    final db = await database;
+    await db.update(
+      tableUsuarios,
+      {'bloqueado_hasta': null},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

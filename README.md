@@ -100,9 +100,20 @@ generan por ti en segundos si necesitas recompilar.
     resetear).
 11. **Panel de administrador** (`lib/screens/admin_panel_screen.dart`) —
     solo para la cuenta admin (ver abajo); dos pestañas con todos los
-    usuarios registrados y todas las solicitudes creadas, cada una con
-    opción de **eliminar** (con confirmación; el admin no puede
-    eliminarse a sí mismo).
+    usuarios registrados y todas las solicitudes creadas.
+    - **Usuarios**: resumen rápido (cuántos clientes, colaboradores y
+      cuentas bloqueadas hay ahora mismo), buscador por alias/nombre/
+      correo, y por cada usuario: **eliminar**, **cambiar de rol**
+      (cliente ↔ colaborador — soporte para cuando alguien se registró
+      con el rol equivocado), **desactivar 2FA** (soporte para cuando
+      alguien perdió su app autenticadora Y su correo, así que tampoco
+      puede usar la recuperación normal) y **quitar bloqueo** (si está
+      cumpliendo el bloqueo de 5 minutos por cancelar una solicitud ya
+      aceptada). El admin no puede hacerse ninguna de estas acciones a
+      sí mismo.
+    - **Solicitudes**: buscador (por alias, localidad o descripción),
+      chips para filtrar por estado, resumen de comisiones de la
+      plataforma (10%, sigue ficticio) y **eliminar**.
 
 ## Cuenta de administrador
 
