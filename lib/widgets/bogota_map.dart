@@ -16,6 +16,7 @@ class BogotaMap extends StatelessWidget {
   final LatLng? centro;
   final double zoom;
   final MapController? controller;
+  final void Function(LatLng punto)? onTap;
 
   const BogotaMap({
     super.key,
@@ -23,6 +24,7 @@ class BogotaMap extends StatelessWidget {
     this.centro,
     this.zoom = 12,
     this.controller,
+    this.onTap,
   });
 
   @override
@@ -37,6 +39,7 @@ class BogotaMap extends StatelessWidget {
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
+        onTap: onTap == null ? null : (_, punto) => onTap!(punto),
       ),
       children: [
         TileLayer(

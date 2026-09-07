@@ -166,6 +166,16 @@ instales la app.
   atómica en el backend) y desaparece para los demás; al terminar la
   marca como `completada`. El Cliente ve el estado en su pantalla
   principal y en su perfil.
+- **Punto exacto en el mapa**: en el formulario, después de la
+  dirección, el Cliente puede tocar "Marcar el punto en el mapa
+  (opcional)" y elegir el lugar exacto tocando el mapa
+  (`lib/screens/seleccionar_punto_screen.dart`) — si no lo hace, se usa
+  el centro de la localidad como antes. Ese punto (exacto o
+  aproximado) es el que de verdad se guarda como `latitud`/`longitud`
+  de la solicitud, y es el que ve el Colaborador: los pines del mapa y
+  el botón "VER EN EL MAPA" ahora usan siempre la posición real
+  guardada en la solicitud, no solo el centro de la localidad como
+  antes.
 - **Distancia y ubicación en el mapa (Colaborador)**: mientras tiene la
   pantalla de inicio abierta, el Colaborador ve su propia posición GPS
   en el mapa (punto azul, `buildMiUbicacionMarker` en

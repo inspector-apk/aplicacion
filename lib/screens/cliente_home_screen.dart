@@ -23,6 +23,7 @@ import '../widgets/imagen_referencia_thumb.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
 import 'pago_ficticio_screen.dart';
+import 'seleccionar_punto_screen.dart';
 import 'ver_respuesta_screen.dart';
 
 /// Pantalla principal del rol Cliente: mapa de Bogotá con un panel
@@ -48,6 +49,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   final _descripcionCtrl = TextEditingController();
   final _direccionCtrl = TextEditingController();
   File? _imagenReferencia;
+  LatLng? _puntoExacto;
   Timer? _actualizacionPeriodica;
   Timer? _actualizacionColaboradores;
   List<ColaboradorCercano> _colaboradoresCercanos = [];
@@ -120,6 +122,28 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
     setState(() => _imagenReferencia = null);
   }
 
+  Future<void> _marcarPuntoEnElMapa() async {
+    if (_localidad == null) {
+      _mostrarMensaje('Selecciona primero la localidad');
+      return;
+    }
+    final centroLocalidad = kLocalidadesBogota[_localidad] ?? kBogotaCenter;
+    final punto = await Navigator.of(context).push<LatLng>(
+      AppRoutes.slide(
+        SeleccionarPuntoScreen(
+          centroInicial: centroLocalidad,
+          puntoInicial: _puntoExacto,
+        ),
+      ),
+    );
+    if (punto == null) return;
+    setState(() => _puntoExacto = punto);
+  }
+
+  void _quitarPuntoExacto() {
+    setState(() => _puntoExacto = null);
+  }
+
   void _alternarTipo(TipoSolicitud t) {
     setState(() {
       if (_tipos.contains(t)) {
@@ -187,10 +211,14 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         referenciaPago: resultadoPago.referencia,
         metodoPago: resultadoPago.metodo,
         imagenReferenciaBase64: imagenReferenciaBase64,
+        puntoExacto: _puntoExacto,
       );
       _descripcionCtrl.clear();
       _direccionCtrl.clear();
-      setState(() => _imagenReferencia = null);
+      setState(() {
+        _imagenReferencia = null;
+        _puntoExacto = null;
+      });
       await _cargarSolicitudActiva();
       if (mounted) {
         _mostrarMensaje('Pago simulado exitoso · Ref: ${resultadoPago.referencia}');
@@ -255,14 +283,13 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final centro = _solicitudActiva != null
-        ? kLocalidadesBogota[_solicitudActiva!.localidad]
+        ? LatLng(_solicitudActiva!.latitud, _solicitudActiva!.longitud)
         : (_localidad != null ? kLocalidadesBogota[_localidad] : null);
 
     final marcadores = [
       if (_solicitudActiva != null)
         buildPinMarker(
-          punto: kLocalidadesBogota[_solicitudActiva!.localidad] ??
-              kBogotaCenter,
+          punto: LatLng(_solicitudActiva!.latitud, _solicitudActiva!.longitud),
         ),
       // Solo se muestran mientras no hay una solicitud activa: ves los
       // colaboradores disponibles antes de pedir la tuya.
@@ -303,6 +330,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       descripcionCtrl: _descripcionCtrl,
                       direccionCtrl: _direccionCtrl,
                       imagenReferencia: _imagenReferencia,
+                      puntoExacto: _puntoExacto,
                       cargando: _enviando,
                       onCategoriaChanged: (c) =>
                           setState(() => _categoria = c),
@@ -312,6 +340,8 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                           setState(() => _localidad = l),
                       onElegirImagen: _elegirImagenReferencia,
                       onQuitarImagen: _quitarImagenReferencia,
+                      onMarcarPunto: _marcarPuntoEnElMapa,
+                      onQuitarPunto: _quitarPuntoExacto,
                       onEnviar: _enviarSolicitud,
                     ),
             ),
@@ -329,6 +359,7 @@ class _PanelFormulario extends StatelessWidget {
   final TextEditingController descripcionCtrl;
   final TextEditingController direccionCtrl;
   final File? imagenReferencia;
+  final LatLng? puntoExacto;
   final bool cargando;
   final ValueChanged<Categoria> onCategoriaChanged;
   final ValueChanged<Urgencia> onUrgenciaChanged;
@@ -336,6 +367,8 @@ class _PanelFormulario extends StatelessWidget {
   final ValueChanged<String?> onLocalidadChanged;
   final ValueChanged<ImageSource> onElegirImagen;
   final VoidCallback onQuitarImagen;
+  final VoidCallback onMarcarPunto;
+  final VoidCallback onQuitarPunto;
   final VoidCallback onEnviar;
 
   const _PanelFormulario({
@@ -346,6 +379,7 @@ class _PanelFormulario extends StatelessWidget {
     required this.descripcionCtrl,
     required this.direccionCtrl,
     required this.imagenReferencia,
+    required this.puntoExacto,
     required this.cargando,
     required this.onCategoriaChanged,
     required this.onUrgenciaChanged,
@@ -353,6 +387,8 @@ class _PanelFormulario extends StatelessWidget {
     required this.onLocalidadChanged,
     required this.onElegirImagen,
     required this.onQuitarImagen,
+    required this.onMarcarPunto,
+    required this.onQuitarPunto,
     required this.onEnviar,
   });
 
@@ -519,6 +555,39 @@ class _PanelFormulario extends StatelessWidget {
               helperText: 'Calle/carrera y número donde debe ir el colaborador',
             ),
           ),
+          const SizedBox(height: 10),
+          if (puntoExacto != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.success.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: AppColors.success, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Punto exacto marcado en el mapa',
+                      style: TextStyle(color: AppColors.success, fontSize: 12.5),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onQuitarPunto,
+                    child: const Text('Quitar',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ),
+                ],
+              ),
+            )
+          else
+            OutlineActionButton(
+              label: 'MARCAR EL PUNTO EN EL MAPA (OPCIONAL)',
+              onPressed: onMarcarPunto,
+            ),
           const SizedBox(height: 18),
           const Text(
             'Imagen de referencia (opcional)',

@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
-import '../core/bogota_localidades.dart';
 import '../core/precios.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
@@ -130,15 +129,14 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
   String? _distanciaHasta(Solicitud s) {
     final miPosicion = _miPosicion;
     if (miPosicion == null) return null;
-    final punto = kLocalidadesBogota[s.localidad] ?? kBogotaCenter;
+    final punto = LatLng(s.latitud, s.longitud);
     final metros = _distancia.as(LengthUnit.Meter, miPosicion, punto);
     if (metros < 1000) return '${metros.round()} m de tu ubicación';
     return '${(metros / 1000).toStringAsFixed(1)} km de tu ubicación';
   }
 
   void _verEnElMapa(Solicitud s) {
-    final punto = kLocalidadesBogota[s.localidad] ?? kBogotaCenter;
-    _mapController.move(punto, 15);
+    _mapController.move(LatLng(s.latitud, s.longitud), 16);
   }
 
   Future<void> _cargarDatos() async {
@@ -270,10 +268,10 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
 
     final marcadores = [
       ..._pendientes.map((s) => buildPinMarker(
-            punto: kLocalidadesBogota[s.localidad] ?? kBogotaCenter,
+            punto: LatLng(s.latitud, s.longitud),
           )),
       ..._enCurso.map((s) => buildPinMarker(
-            punto: kLocalidadesBogota[s.localidad] ?? kBogotaCenter,
+            punto: LatLng(s.latitud, s.longitud),
             color: AppColors.success,
             icon: Icons.fact_check_outlined,
           )),

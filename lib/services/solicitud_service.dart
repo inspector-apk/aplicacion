@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 import '../core/backend_config.dart';
 import '../core/bogota_localidades.dart';
@@ -69,8 +70,11 @@ class SolicitudService {
     required String referenciaPago,
     required String metodoPago,
     String? imagenReferenciaBase64,
+    LatLng? puntoExacto,
   }) async {
-    final centro = kLocalidadesBogota[localidad] ?? kBogotaCenter;
+    // Si el cliente marcó un punto exacto en el mapa se usa ese; si no,
+    // se cae al centro de la localidad como aproximación.
+    final centro = puntoExacto ?? kLocalidadesBogota[localidad] ?? kBogotaCenter;
     final valorTotal = calcularValorTotal(categoria, tipos, urgencia);
 
     final respuesta = await http
