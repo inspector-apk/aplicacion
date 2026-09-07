@@ -318,6 +318,17 @@ instales la app.
   representan colaboradores reales, son puramente visuales para que el
   mapa nunca se vea vacío, con una pequeña variación aleatoria en cada
   refresco para dar sensación de movimiento.
+- **Bloqueo de capturas de pantalla**: en Android, la app bloquea por
+  completo las capturas y grabaciones de pantalla en cualquier momento
+  (`FLAG_SECURE` en `MainActivity.kt` — ver la sección de compilación
+  para Android más abajo, es un paso manual porque `android/` no se
+  versiona). **En iOS esto no es técnicamente posible**: Apple no deja
+  a ninguna app bloquear la captura de pantalla del sistema bajo
+  ninguna circunstancia. Ahí, en cambio, se *detecta* cuando ya ocurrió
+  (`ios/Runner/AppDelegate.swift`, inyectado en
+  `.github/workflows/build-ios.yml`) y se muestra una alerta en la app
+  (`lib/services/screenshot_detection_service.dart`) — disuasivo, no
+  preventivo.
 - `lib/services/content_moderation_service.dart` bloquea automáticamente
   el envío de una solicitud si su descripción contiene palabras
   relacionadas con contenido sexual o explotación infantil. Es un filtro
@@ -420,7 +431,37 @@ flutter doctor
    `record` para las notas de audio (y también hace falta para grabar
    video con sonido).
 
-5. Genera el ícono de la app (launcher / Descargas) a partir de
+5. **Bloquea capturas y grabación de pantalla** en
+   `android/app/src/main/kotlin/com/inspector/inspector/MainActivity.kt`
+   — tampoco viene por defecto, reemplaza todo el archivo por:
+
+   ```kotlin
+   package com.inspector.inspector
+
+   import android.os.Bundle
+   import android.view.WindowManager
+   import io.flutter.embedding.android.FlutterActivity
+
+   class MainActivity : FlutterActivity() {
+       override fun onCreate(savedInstanceState: Bundle?) {
+           window.setFlags(
+               WindowManager.LayoutParams.FLAG_SECURE,
+               WindowManager.LayoutParams.FLAG_SECURE
+           )
+           super.onCreate(savedInstanceState)
+       }
+   }
+   ```
+
+   Con `FLAG_SECURE`, Android bloquea por completo capturas y grabación
+   de pantalla en cualquier parte de la app (y la oculta, en negro, del
+   selector de apps recientes) — protege el contenido sensible (fotos,
+   audio, video, respuestas de un solo vistazo). **En iOS esto no es
+   posible**: Apple no permite a ninguna app bloquear la captura de
+   pantalla del sistema; lo único viable ahí es *detectar* cuando
+   ocurre y avisar (ver la sección de iOS más abajo).
+
+6. Genera el ícono de la app (launcher / Descargas) a partir de
    `assets/icon/app_icon.png` — este paso escribe los mipmaps de Android
    (y los assets de iOS) y solo hace falta repetirlo si cambias la
    imagen del ícono:
@@ -429,13 +470,13 @@ flutter doctor
    dart run flutter_launcher_icons
    ```
 
-6. (Opcional) Prueba la app en un emulador o dispositivo conectado:
+7. (Opcional) Prueba la app en un emulador o dispositivo conectado:
 
    ```powershell
    flutter run
    ```
 
-7. Genera el APK de release:
+8. Genera el APK de release:
 
    ```powershell
    flutter build apk --release

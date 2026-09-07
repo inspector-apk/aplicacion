@@ -41,6 +41,43 @@ jobs:
             }
           }' ios/Runner/Info.plist
 
+      - name: Detectar capturas de pantalla (iOS no permite bloquearlas)
+        run: |
+          cat > ios/Runner/AppDelegate.swift << 'EOF'
+          import Flutter
+          import UIKit
+
+          // Apple no permite a ninguna app bloquear la captura de pantalla
+          // del sistema (a diferencia de Android). Lo único posible es
+          // detectar cuando ocurrió y avisarle a la propia app, para que
+          // muestre una alerta — disuasivo, no preventivo.
+          @main
+          @objc class AppDelegate: FlutterAppDelegate {
+            override func application(
+              _ application: UIApplication,
+              didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+            ) -> Bool {
+              GeneratedPluginRegistrant.register(with: self)
+
+              if let controller = window?.rootViewController as? FlutterViewController {
+                let canal = FlutterMethodChannel(
+                  name: "inspector/capturas",
+                  binaryMessenger: controller.binaryMessenger
+                )
+                NotificationCenter.default.addObserver(
+                  forName: UIApplication.userDidTakeScreenshotNotification,
+                  object: nil,
+                  queue: .main
+                ) { _ in
+                  canal.invokeMethod("capturaDetectada", arguments: nil)
+                }
+              }
+
+              return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+            }
+          }
+          EOF
+
       - name: Generar el ícono de la app
         run: dart run flutter_launcher_icons -f icons_config_ios.yaml
 
