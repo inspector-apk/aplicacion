@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Padding(
                 padding: EdgeInsets.only(bottom: 24),
                 child: Text(
-                  'Todos tus datos se almacenan únicamente en este dispositivo.',
+                  'Tu cuenta puede usarse desde cualquier dispositivo.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
                 ),

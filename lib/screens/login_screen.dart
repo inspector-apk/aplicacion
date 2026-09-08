@@ -75,6 +75,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthException catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se pudo conectar con el servidor. Revisa tu conexión.')));
     } finally {
       if (mounted) setState(() => _cargando = false);
     }

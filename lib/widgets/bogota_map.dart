@@ -9,8 +9,7 @@ import '../core/bogota_localidades.dart';
 
 /// Mapa de Bogotá reutilizable: mapa a pantalla completa detrás, con
 /// contenido superpuesto encima. Usa mosaicos de OpenStreetMap, así que
-/// necesita conexión a internet para verse; los datos de la app
-/// (usuarios, solicitudes) siguen siendo 100% locales.
+/// necesita conexión a internet para verse.
 class BogotaMap extends StatelessWidget {
   final List<Marker> marcadores;
   final LatLng? centro;

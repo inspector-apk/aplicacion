@@ -144,19 +144,23 @@ class Usuario {
     };
   }
 
+  /// El backend nunca devuelve `contrasena`/`salt` en ninguna respuesta
+  /// (nadie fuera del propio servidor tiene por qué verlos) — por eso
+  /// vienen con valor por defecto vacío; en la app tampoco se leen en
+  /// ningún lado después del login, son vestigiales del lado cliente.
   factory Usuario.fromMap(Map<String, Object?> map) {
     return Usuario(
       id: map['id'] as int?,
       nombre: map['nombre'] as String,
       edad: map['edad'] as int,
       correo: map['correo'] as String,
-      contrasenaHash: map['contrasena'] as String,
-      salt: map['salt'] as String,
+      contrasenaHash: map['contrasena'] as String? ?? '',
+      salt: map['salt'] as String? ?? '',
       alias: map['alias'] as String,
       rol: RolUsuarioX.fromValor(map['rol'] as String?),
       fechaRegistro: map['fecha_registro'] as String,
-      aceptoPoliticas: (map['acepto_politicas'] as int) == 1,
-      declaraMayorEdad: (map['declara_mayor_edad'] as int) == 1,
+      aceptoPoliticas: ((map['acepto_politicas'] as int?) ?? 0) == 1,
+      declaraMayorEdad: ((map['declara_mayor_edad'] as int?) ?? 0) == 1,
       totpSecret: map['totp_secret'] as String?,
       totpHabilitado: ((map['totp_habilitado'] as int?) ?? 0) == 1,
       ocupacion: map['ocupacion'] as String?,

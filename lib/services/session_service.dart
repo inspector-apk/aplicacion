@@ -1,8 +1,10 @@
 import '../models/usuario.dart';
 
 /// Mantiene en memoria al usuario con sesión activa mientras la app
-/// está abierta. No hay tokens ni servidores: la sesión vive solo
-/// mientras el proceso de la app está en ejecución.
+/// está abierta. No hay tokens de sesión: la app vuelve a pedir correo
+/// y contraseña cada vez que se abre (se valida contra el backend en
+/// ese momento) — este objeto solo evita tener que recargarlo en cada
+/// pantalla mientras la app sigue abierta.
 class SessionService {
   SessionService._();
   static final SessionService instance = SessionService._();

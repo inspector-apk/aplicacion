@@ -1,13 +1,14 @@
-/// Configuración del backend compartido de solicitudes (ver carpeta
-/// `backend/` en la raíz del proyecto y su README con la guía de
-/// despliegue). Edita estos dos valores después de desplegarlo en tu
-/// servidor, con los mismos que hayas puesto en su archivo `.env`.
+/// Configuración del backend compartido (ver carpeta `backend/` en la
+/// raíz del proyecto y su README con la guía de despliegue). Edita
+/// estos dos valores después de desplegarlo en tu servidor, con los
+/// mismos que hayas puesto en su archivo `.env`.
 ///
-/// Es necesario porque una solicitud creada por un Cliente en su
-/// celular tiene que poder verla un Colaborador en otro celular
-/// distinto — eso requiere una base de datos compartida, no solo local.
-/// El resto de Inspector (usuarios, 2FA, verificación de correo) sigue
-/// siendo 100% local por dispositivo.
+/// Cuentas de usuario y solicitudes viven ahí (para que un Cliente y un
+/// Colaborador en celulares distintos puedan verse entre sí, y para
+/// poder crear/gestionar cuentas desde el panel de administrador web).
+/// La verificación de correo y el 2FA siguen siendo cosas que la propia
+/// app hace directamente (SMTP y TOTP locales), sin pasar por este
+/// backend.
 class BackendConfig {
   BackendConfig._();
 

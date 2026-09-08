@@ -7,8 +7,8 @@ import '../services/auth_service.dart';
 import '../services/session_service.dart';
 
 /// Se muestra solo la primera vez que el usuario inicia sesión, o
-/// mientras no haya seleccionado un rol. La elección se guarda en SQLite
-/// y no se vuelve a preguntar en futuros inicios de sesión.
+/// mientras no haya seleccionado un rol. La elección se guarda en el
+/// servidor y no se vuelve a preguntar en futuros inicios de sesión.
 class RoleSelectionScreen extends StatefulWidget {
   final Usuario usuario;
   const RoleSelectionScreen({super.key, required this.usuario});
@@ -22,16 +22,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Future<void> _seleccionar(RolUsuario rol) async {
     setState(() => _cargando = true);
-    final actualizado = await AuthService.seleccionarRol(
-      usuarioId: widget.usuario.id!,
-      rol: rol,
-    );
-    SessionService.instance.iniciarSesion(actualizado);
+    try {
+      final actualizado = await AuthService.seleccionarRol(
+        usuarioId: widget.usuario.id!,
+        rol: rol,
+      );
+      SessionService.instance.iniciarSesion(actualizado);
 
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      AppRoutes.fade(pantallaPrincipalParaRol(actualizado)),
-    );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        AppRoutes.fade(pantallaPrincipalParaRol(actualizado)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se pudo conectar con el servidor. Revisa tu conexión.')));
+    }
   }
 
   @override

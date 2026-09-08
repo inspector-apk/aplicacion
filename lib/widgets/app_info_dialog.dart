@@ -48,9 +48,9 @@ Future<void> mostrarInfoDeLaApp(BuildContext context) {
             ),
             const SizedBox(height: 14),
             const Text(
-              'Tus datos (cuenta, alias, solicitudes) se guardan solo en '
-              'este dispositivo. Verificamos tu correo al registrarte para '
-              'confirmar que es real.',
+              'Tu cuenta y tus solicitudes viven en nuestro servidor para '
+              'que puedas usarlas desde cualquier dispositivo. Verificamos '
+              'tu correo al registrarte para confirmar que es real.',
               style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 11.5,

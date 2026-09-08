@@ -70,6 +70,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } on AuthException catch (e) {
       _mostrarError(e.mensaje);
+    } catch (_) {
+      _mostrarError('No se pudo conectar con el servidor. Revisa tu conexión.');
     } finally {
       if (mounted) setState(() => _cargando = false);
     }

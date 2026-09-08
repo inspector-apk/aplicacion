@@ -1,8 +1,4 @@
-const path = require('path');
-const Database = require('better-sqlite3');
-
-const db = new Database(path.join(__dirname, 'solicitudes.db'));
-db.pragma('journal_mode = WAL');
+const db = require('./conexion_db');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS solicitudes (

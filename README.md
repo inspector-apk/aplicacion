@@ -1,12 +1,14 @@
 # Inspector
 
-App móvil hecha en **Flutter** (Android + iOS desde el mismo código).
-Los usuarios (cuentas, alias, roles, contraseñas hasheadas con SHA-256 +
-salt, 2FA) viven 100% local en **SQLite** en cada dispositivo — nadie
-más los ve. Las **solicitudes** son la única excepción: viven en un
-backend compartido (ver `backend/`) porque una solicitud creada por un
-Cliente en su celular tiene que poder verla un Colaborador en un celular
-distinto — eso es imposible con almacenamiento solo local.
+App móvil hecha en **Flutter** (Android + iOS desde el mismo código),
+con un backend compartido (ver `backend/`) que guarda **cuentas de
+usuario** y **solicitudes** — así una cuenta funciona desde cualquier
+celular, y una solicitud creada por un Cliente la puede ver un
+Colaborador en un dispositivo distinto. Las contraseñas se hashean con
+SHA-256 + salt **en el propio celular antes de enviarse**: el servidor
+nunca ve una contraseña en texto plano, solo guarda y compara el hash.
+También hay un [panel de administrador para PC](backend/README.md) que
+gestiona usuarios y solicitudes desde el navegador.
 
 Funciones que requieren internet:
 - Cargar los mosaicos visuales del mapa de Bogotá; sin conexión el mapa
@@ -56,17 +58,21 @@ generan por ti en segundos si necesitas recompilar.
 4. **Verificar correo** (`lib/screens/email_verification_screen.dart`) —
    pide el código de 6 dígitos enviado al correo ingresado (ver
    "Verificación de correo" más abajo). Solo al verificarlo correctamente
-   se crea la cuenta de verdad en SQLite, se genera el alias único y
+   se crea la cuenta de verdad en el servidor, se genera el alias único y
    **totalmente aleatorio** (`Inspector_XXXXXXXX`, 8 caracteres
    alfanuméricos al azar — no se deriva del nombre, correo ni ningún otro
-   dato personal) y se muestra en un modal (`register_success_dialog.dart`).
+   dato personal, generado por el propio backend para garantizar que sea
+   único entre todos los usuarios) y se muestra en un modal
+   (`register_success_dialog.dart`).
 5. **Login** (`lib/screens/login_screen.dart`) — correo + contraseña,
    enlace "¿Olvidaste tu contraseña?" que lleva a un flujo de
-   recuperación 100% local por alias o nombre
-   (`forgot_password_screen.dart`).
+   recuperación por alias o nombre, verificado con un código al correo
+   antes de dejar cambiar la contraseña (`forgot_password_screen.dart`) —
+   ver "Cuentas y seguridad" más abajo.
 5. **Selección de rol** (`lib/screens/role_selection_screen.dart`) —
    aparece solo si el usuario aún no tiene rol asignado; guarda la
-   elección (Colaborador / Cliente) en SQLite y no se vuelve a preguntar.
+   elección (Colaborador / Cliente) en el servidor y no se vuelve a
+   preguntar.
 6. **Inicio Cliente** (`lib/screens/cliente_home_screen.dart`) — mapa de
    Bogotá con un panel inferior: si no hay una
    solicitud activa, muestra el formulario para crear una (texto o
@@ -115,14 +121,13 @@ generan por ti en segundos si necesitas recompilar.
       chips para filtrar por estado, resumen de comisiones de la
       plataforma (10%, sigue ficticio) y **eliminar**.
 - **Panel de administrador para PC** (`backend/admin-panel.html`,
-  servido en `http://<tu-servidor>:12443/admin`): gestiona solo
-  **solicitudes** (buscar, filtrar por estado, ver comisiones,
-  eliminar) desde el navegador de un computador — pensado para no
-  depender del celular para esta parte. No incluye usuarios porque esos
-  siguen siendo 100% locales por dispositivo (no existen en el
-  servidor); esa gestión se queda en la app móvil como antes. Pide
-  entrar con la misma `API_KEY` del backend, no agrega autenticación
-  nueva. Ver `backend/README.md` para más detalle.
+  servido en `http://<tu-servidor>:12443/admin`): la versión completa
+  del panel, pensada para computador, con dos pestañas — **Usuarios**
+  (buscar, **crear cuentas nuevas**, cambiar rol, desactivar 2FA, quitar
+  bloqueos, eliminar) y **Solicitudes** (buscar, filtrar por estado, ver
+  comisiones, eliminar). Pide entrar con la misma `API_KEY` del backend,
+  no agrega autenticación nueva. Ver `backend/README.md` para más
+  detalle.
 
 ## Cuenta de administrador
 
@@ -143,14 +148,32 @@ la app más allá de pruebas locales, cámbiala desde "¿Olvidaste tu
 contraseña?" usando el alias generado (visible en el panel) apenas
 instales la app.
 
-## Almacenamiento local
+## Cuentas y seguridad
 
-- `lib/data/database_helper.dart`: crea y administra la tabla
-  `usuarios` en SQLite (`sqflite`) con los campos `id, nombre, edad,
-  correo, contrasena, salt, alias, rol, fecha_registro,
-  acepto_politicas, declara_mayor_edad, totp_secret, totp_habilitado,
-  ocupacion, localidad_trabajo`. Los dos últimos son opcionales y solo
-  se editan desde el Perfil de un usuario con rol Colaborador.
+- `backend/usuarios.js`: tabla `usuarios` en el backend compartido, con
+  los campos `id, nombre, edad, correo, contrasena_hash, salt, alias,
+  rol, fecha_registro, acepto_politicas, declara_mayor_edad,
+  totp_secret, totp_habilitado, ocupacion, localidad_trabajo,
+  banco_ficticio, numero_cuenta_ficticia, bloqueado_hasta`. `contrasena_hash`
+  y `salt` **nunca** salen del servidor por ningún endpoint.
+- `lib/services/password_service.dart`: SHA-256(`salt:contraseña`),
+  calculado siempre en el celular (registro, login, cambio de
+  contraseña) — el servidor solo recibe y compara el hash, nunca la
+  contraseña en texto plano. Excepción: cuando el **admin** crea una
+  cuenta desde el panel web, sí manda la contraseña en texto plano en
+  ese momento (es el propio administrador tecleándola) y el servidor la
+  hashea ahí mismo con el mismo esquema, para que esa cuenta pueda
+  iniciar sesión después exactamente igual que una registrada desde la
+  app.
+- **Recuperación de contraseña**: busca la cuenta por alias o nombre
+  completo y, antes de dejar cambiar la contraseña, verifica un código
+  de 6 dígitos enviado al correo de esa cuenta (reutiliza
+  `EmailVerificationService`, el mismo sistema SMTP-directo del
+  registro). Es necesario porque, a diferencia de cuando las cuentas
+  eran 100% locales a un solo celular, ahora cualquier dispositivo
+  puede alcanzar cualquier cuenta — sin esa verificación, cualquiera
+  que supiera el alias o nombre de otra persona podría robarle la
+  cuenta.
 - `lib/services/two_factor_service.dart`: verificación en dos pasos con
   TOTP (RFC 6238, `package:otp` + `package:base32`), compatible con
   Google Authenticator y similares — se genera y verifica 100% en el
@@ -281,14 +304,16 @@ instales la app.
   Sigue aplicando la misma regla de "una sola vez": todo el contenido de
   la respuesta (de cualquier tipo) se borra del servidor en el momento
   en que el Cliente lo abre.
-- Las solicitudes **no viven en SQLite local**: viven en el backend
-  compartido (`backend/`, Node.js + Express + better-sqlite3), porque
+- Las solicitudes viven en el backend compartido (`backend/`, Node.js +
+  Express + better-sqlite3), junto con las cuentas de usuario, porque
   tienen que poder verse entre distintos dispositivos. Se identifica a
-  cada persona por su **alias** (nunca por el id local de la base de
-  datos del dispositivo, que no significa nada fuera de él).
-  `lib/services/solicitud_service.dart` es el lado de la app que llama a
-  ese backend; sin conexión a él, esta parte de la app no funciona (el
-  resto — login, 2FA, verificación de correo, perfil — sigue local).
+  cada persona por su **alias** (nunca por su id numérico de base de
+  datos, que no se expone). `lib/services/solicitud_service.dart` es el
+  lado de la app que llama a ese backend; sin conexión a él, la app no
+  funciona en general (login, solicitudes, perfil — todo depende del
+  servidor ahora). La verificación de correo (SMTP directo) y el 2FA
+  (TOTP) son las únicas partes que la propia app resuelve sin pasar por
+  este backend.
 - No hay websockets: la app consulta el backend cada 6 segundos
   (`Timer.periodic` en `cliente_home_screen.dart` y
   `colaborador_home_screen.dart`) para simular tiempo real — así una
@@ -401,9 +426,9 @@ desde el propio dispositivo del usuario (paquete `mailer`).
   pasos en esa cuenta de Gmail y genera una en
   https://myaccount.google.com/apppasswords
 - Sin conexión a internet en el celular del usuario, el paso de
-  "Verificar correo" del registro fallará — es la única función de
-  Inspector que necesita internet en el dispositivo (el resto, incluido
-  el login, funciona 100% local incluso sin conexión).
+  "Verificar correo" del registro fallará — igual que el resto de la
+  app (login, solicitudes, etc.), que también depende del backend
+  compartido y no funciona sin conexión.
 
 ## Requisitos para compilar
 
@@ -583,9 +608,11 @@ Pasos una vez tengas acceso a macOS:
 
 ## Primer arranque
 
-La base de datos SQLite (`inspector.db`) se crea automáticamente la
-primera vez que la app se ejecuta en el dispositivo (ver
-`DatabaseHelper._initDatabase`); no requiere ningún paso manual.
+Al abrir la app por primera vez (`main()` → `AuthService.asegurarCuentaAdmin()`),
+intenta crear la cuenta admin precargada en el servidor si todavía no
+existe — necesita conexión al backend en ese momento; si no la hay,
+simplemente no pasa nada y se reintenta la próxima vez que la app abra
+con internet. No requiere ningún paso manual.
 
 ## Ícono de la app
 

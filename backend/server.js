@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./db');
 const ubicaciones = require('./ubicaciones');
+const usuarios = require('./usuarios');
 
 const app = express();
 app.use(cors());
@@ -244,11 +245,176 @@ app.get('/api/colaboradores/cercanos', requiereApiKey, (req, res) => {
   res.json({ ok: true, colaboradores: ubicaciones.colaboradoresCercanos() });
 });
 
-// Panel de administrador para PC (gestión de solicitudes; los usuarios
-// siguen siendo 100% locales por celular, así que no aparecen aquí).
-// Es un solo archivo HTML estático con su propio JS — pide la misma
-// API_KEY del backend como "clave de administrador" para poder usar los
-// endpoints de arriba, no agrega autenticación nueva.
+// ---------------------------------------------------------------------
+// Usuarios (cuentas): registro, login y todo lo que antes vivía 100%
+// local en SQLite de cada celular. La contraseña NUNCA viaja en texto
+// plano en el registro/login normales: el cliente ya trae el hash
+// (SHA-256 salt:contraseña, mismo esquema que usaba localmente) — el
+// servidor solo lo compara. La excepción es la creación de cuentas
+// desde el panel de admin (contrasena en texto plano en el body),
+// donde el propio servidor genera el salt y hashea.
+// ---------------------------------------------------------------------
+
+app.post('/api/usuarios/registro', requiereApiKey, (req, res) => {
+  const { nombre, edad, correo, contrasenaHash, salt, aceptoPoliticas, declaraMayorEdad, rol } = req.body;
+  if (!nombre || !correo || !contrasenaHash || !salt || typeof edad !== 'number') {
+    return res.status(400).json({ ok: false, error: 'Faltan datos del registro' });
+  }
+  // El registro normal desde la app nunca manda `rol` (se elige después,
+  // en la pantalla de selección de rol); solo lo usa el arranque de la
+  // app para crear la cuenta admin precargada con su rol ya fijo.
+  if (rol && !['cliente', 'colaborador', 'administrador'].includes(rol)) {
+    return res.status(400).json({ ok: false, error: 'rol inválido' });
+  }
+  try {
+    const usuario = usuarios.crear({ nombre, edad, correo, contrasenaHash, salt, aceptoPoliticas, declaraMayorEdad, rol });
+    res.status(201).json({ ok: true, usuario });
+  } catch (err) {
+    if (err instanceof usuarios.ErrorUsuario) {
+      return res.status(409).json({ ok: false, error: err.message });
+    }
+    res.status(500).json({ ok: false, error: 'No se pudo crear la cuenta' });
+  }
+});
+
+// Paso 1 del login: el cliente necesita el salt del usuario para poder
+// calcular el mismo hash localmente antes de mandarlo a verificar.
+app.get('/api/usuarios/salt', requiereApiKey, (req, res) => {
+  const correo = String(req.query.correo || '');
+  if (!correo) return res.status(400).json({ ok: false, error: 'correo es requerido' });
+  const salt = usuarios.obtenerSaltPorCorreo(correo);
+  if (!salt) return res.status(404).json({ ok: false, error: 'No existe una cuenta con ese correo' });
+  res.json({ ok: true, salt });
+});
+
+app.post('/api/usuarios/login', requiereApiKey, (req, res) => {
+  const { correo, contrasenaHash } = req.body;
+  if (!correo || !contrasenaHash) {
+    return res.status(400).json({ ok: false, error: 'correo y contrasenaHash son requeridos' });
+  }
+  const usuario = usuarios.verificarLogin(correo, contrasenaHash);
+  if (!usuario) {
+    return res.status(401).json({ ok: false, error: 'Correo o contraseña incorrectos' });
+  }
+  res.json({ ok: true, usuario });
+});
+
+// Recuperación de contraseña: busca por alias o nombre completo (igual
+// que antes, cuando era local) y devuelve el correo para que la app
+// mande un código de verificación antes de dejar cambiar la contraseña
+// — ya no puede ser "sin verificar nada" como cuando esto vivía en un
+// solo dispositivo, porque ahora cualquier celular puede alcanzar
+// cualquier cuenta.
+app.get('/api/usuarios/buscar-recuperacion', requiereApiKey, (req, res) => {
+  const texto = String(req.query.texto || '');
+  if (!texto) return res.status(400).json({ ok: false, error: 'texto es requerido' });
+  const usuario = usuarios.buscarPorAliasONombre(texto);
+  if (!usuario) {
+    return res.status(404).json({ ok: false, error: 'No se encontró ninguna cuenta con ese alias o nombre' });
+  }
+  res.json({ ok: true, usuario: { id: usuario.id, alias: usuario.alias, correo: usuario.correo } });
+});
+
+app.get('/api/usuarios/:id', requiereApiKey, (req, res) => {
+  const usuario = usuarios.obtenerPorId(Number(req.params.id));
+  if (!usuario) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+  res.json({ ok: true, usuario });
+});
+
+app.patch('/api/usuarios/:id/rol', requiereApiKey, (req, res) => {
+  const { rol } = req.body;
+  if (!['cliente', 'colaborador'].includes(rol)) {
+    return res.status(400).json({ ok: false, error: 'rol inválido' });
+  }
+  usuarios.actualizarRol(Number(req.params.id), rol);
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(Number(req.params.id)) });
+});
+
+app.patch('/api/usuarios/:id/contrasena', requiereApiKey, (req, res) => {
+  const { contrasenaHash, salt } = req.body;
+  if (!contrasenaHash || !salt) {
+    return res.status(400).json({ ok: false, error: 'contrasenaHash y salt son requeridos' });
+  }
+  usuarios.actualizarContrasena(Number(req.params.id), contrasenaHash, salt);
+  res.json({ ok: true });
+});
+
+app.patch('/api/usuarios/:id/2fa', requiereApiKey, (req, res) => {
+  const { secreto } = req.body;
+  const id = Number(req.params.id);
+  if (secreto) usuarios.activarTotp(id, secreto);
+  else usuarios.desactivarTotp(id);
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+});
+
+app.patch('/api/usuarios/:id/perfil-colaborador', requiereApiKey, (req, res) => {
+  const { ocupacion, localidadTrabajo } = req.body;
+  const id = Number(req.params.id);
+  usuarios.actualizarPerfilColaborador(id, { ocupacion, localidadTrabajo });
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+});
+
+app.patch('/api/usuarios/:id/cuenta-bancaria', requiereApiKey, (req, res) => {
+  const { banco, numeroCuenta } = req.body;
+  const id = Number(req.params.id);
+  usuarios.actualizarCuentaBancaria(id, { banco, numeroCuenta });
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+});
+
+// Bloqueo de 5 minutos por cancelar una solicitud aceptada (bloquear:true,
+// lo llama la propia app) o para que el admin lo levante antes (bloquear:false).
+app.patch('/api/usuarios/:id/bloqueo', requiereApiKey, (req, res) => {
+  const { bloquear } = req.body;
+  const id = Number(req.params.id);
+  if (bloquear) {
+    const hasta = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    usuarios.bloquearHasta(id, hasta);
+  } else {
+    usuarios.quitarBloqueo(id);
+  }
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+});
+
+// ---- Solo para el panel de administrador ----
+
+app.get('/api/usuarios', requiereApiKey, (req, res) => {
+  res.json({ ok: true, usuarios: usuarios.listarTodos() });
+});
+
+// El admin crea una cuenta directamente con contraseña en texto plano
+// (el servidor la hashea aquí mismo) — a diferencia del registro normal,
+// que siempre llega ya hasheado desde la app.
+app.post('/api/usuarios/admin-crear', requiereApiKey, (req, res) => {
+  const { nombre, edad, correo, contrasena, rol } = req.body;
+  if (!nombre || !correo || !contrasena || typeof edad !== 'number') {
+    return res.status(400).json({ ok: false, error: 'Faltan datos' });
+  }
+  if (rol && !['cliente', 'colaborador'].includes(rol)) {
+    return res.status(400).json({ ok: false, error: 'rol inválido' });
+  }
+  try {
+    const usuario = usuarios.crear({
+      nombre, edad, correo, contrasena, rol,
+      aceptoPoliticas: true, declaraMayorEdad: true,
+    });
+    res.status(201).json({ ok: true, usuario });
+  } catch (err) {
+    if (err instanceof usuarios.ErrorUsuario) {
+      return res.status(409).json({ ok: false, error: err.message });
+    }
+    res.status(500).json({ ok: false, error: 'No se pudo crear la cuenta' });
+  }
+});
+
+app.delete('/api/usuarios/:id', requiereApiKey, (req, res) => {
+  usuarios.eliminar(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+// Panel de administrador para PC: usuarios y solicitudes. Es un solo
+// archivo HTML estático con su propio JS — pide la misma API_KEY del
+// backend como "clave de administrador" para poder usar los endpoints
+// de arriba, no agrega autenticación nueva.
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });

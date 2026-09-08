@@ -26,6 +26,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   }
   a { color: var(--accent); }
+  [hidden] { display: none !important; }
 
   /* ---- Aviso de pantalla pequeña (pensado para PC, no celular) ---- */
   #avisoMovil {
@@ -59,12 +60,13 @@
   }
   #login h1 { color: var(--accent); font-size: 20px; margin: 0 0 6px; letter-spacing: 1px; }
   #login p { color: var(--text-secondary); font-size: 13px; margin: 0 0 20px; }
-  input {
+  input, select {
     width: 100%; padding: 12px 14px; margin-bottom: 12px;
     background: var(--bg); color: var(--text-primary);
     border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
   }
-  input:focus { outline: none; border-color: var(--accent); }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  label.campo { display: block; font-size: 11.5px; color: var(--text-secondary); margin: 0 0 4px; }
   button.principal {
     width: 100%; padding: 13px; border: none; border-radius: 10px;
     background: var(--accent); color: #000; font-weight: 700; font-size: 14px;
@@ -76,7 +78,7 @@
   /* ---- Panel principal ---- */
   #panel { display: none; max-width: 1200px; margin: 0 auto; padding: 24px; }
   header.top {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
   }
   header.top h1 { font-size: 18px; letter-spacing: 2px; color: var(--text-primary); margin: 0; }
   header.top .spacer { flex: 1; }
@@ -85,6 +87,13 @@
     border-radius: 10px; padding: 9px 14px; cursor: pointer; font-size: 13px;
   }
   button.icono:hover { border-color: var(--accent); color: var(--accent); }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 4px; margin-right: 20px; color: var(--text-secondary); font-size: 13.5px;
+    font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab.activo { color: var(--accent); border-bottom-color: var(--accent); }
 
   .resumen {
     background: linear-gradient(135deg, var(--accent), var(--accent-dim));
@@ -96,12 +105,20 @@
 
   .controles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
   .controles input[type="text"] { max-width: 320px; margin-bottom: 0; }
+  .controles .spacer { flex: 1; }
   .chip {
     padding: 7px 13px; border-radius: 20px; border: 1px solid var(--border);
     background: var(--surface-variant); color: var(--text-secondary); font-size: 12.5px;
     cursor: pointer; white-space: nowrap;
   }
   .chip.activo { border-color: var(--accent); color: var(--accent); background: rgba(255,215,0,.12); }
+
+  button.secundario {
+    background: var(--surface-variant); border: 1px solid var(--accent); color: var(--accent);
+    border-radius: 10px; padding: 9px 16px; cursor: pointer; font-size: 13px; font-weight: 600;
+    white-space: nowrap;
+  }
+  button.secundario:hover { background: rgba(255,215,0,.1); }
 
   table { width: 100%; border-collapse: collapse; background: var(--surface-variant); border-radius: 14px; overflow: hidden; }
   thead th {
@@ -110,21 +127,28 @@
   }
   tbody td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
   tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: rgba(255,255,255,.02); cursor: pointer; }
+  tbody tr.fila-solicitud:hover { background: rgba(255,255,255,.02); cursor: pointer; }
   .badge {
     display: inline-block; padding: 3px 9px; border-radius: 8px; font-size: 10.5px;
     font-weight: 700; letter-spacing: .4px; background: rgba(255,215,0,.12); color: var(--accent);
     text-transform: uppercase;
   }
+  .badge.bloqueado { background: rgba(255,92,92,.15); color: var(--error); }
   .muted { color: var(--text-muted); font-size: 11.5px; }
   .btn-eliminar {
     background: none; border: 1px solid var(--error); color: var(--error);
     border-radius: 8px; padding: 6px 10px; font-size: 11.5px; cursor: pointer;
   }
   .btn-eliminar:hover { background: rgba(255,92,92,.1); }
+  .btn-accion-mini {
+    background: none; border: 1px solid var(--border); color: var(--text-secondary);
+    border-radius: 8px; padding: 6px 9px; font-size: 11px; cursor: pointer; margin: 2px 4px 2px 0;
+  }
+  .btn-accion-mini:hover { border-color: var(--accent); color: var(--accent); }
+  .acciones-usuario { display: flex; flex-wrap: wrap; }
   .vacio { text-align: center; padding: 40px; color: var(--text-secondary); }
 
-  /* ---- Modal de detalle ---- */
+  /* ---- Modal genérico ---- */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none;
     align-items: center; justify-content: center; z-index: 40; padding: 20px;
@@ -132,16 +156,17 @@
   .overlay.visible { display: flex; }
   .modal {
     background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px;
-    max-width: 520px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px;
+    max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px;
   }
   .modal h3 { margin: 0 0 14px; color: var(--accent); font-size: 16px; }
   .modal .fila { margin-bottom: 10px; font-size: 13px; }
   .modal .fila b { color: var(--text-secondary); font-weight: 600; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
   .modal img { max-width: 100%; border-radius: 10px; margin-top: 6px; }
   .modal button.cerrar {
-    margin-top: 16px; width: 100%; padding: 11px; border-radius: 10px; border: 1px solid var(--border);
+    margin-top: 8px; width: 100%; padding: 11px; border-radius: 10px; border: 1px solid var(--border);
     background: transparent; color: var(--text-secondary); cursor: pointer;
   }
+  .modal .error-texto { min-height: 0; }
 </style>
 </head>
 <body>
@@ -149,7 +174,7 @@
   <div id="avisoMovil" class="oculto">
     <div class="caja">
       <h2>Pensado para computador</h2>
-      <p>Este panel de administrador está diseñado para verse desde una pantalla de computador, no desde un celular. La app móvil de Inspector sigue teniendo su propio panel de admin para gestionar usuarios.</p>
+      <p>Este panel de administrador está diseñado para verse desde una pantalla de computador, no desde un celular.</p>
       <button onclick="document.getElementById('avisoMovil').classList.add('oculto')">Continuar de todas formas</button>
     </div>
   </div>
@@ -157,7 +182,7 @@
   <div id="login">
     <div class="caja">
       <h1>INSPECTOR</h1>
-      <p>Panel de administrador (solicitudes) — solo para computador.</p>
+      <p>Panel de administrador — pensado para computador.</p>
       <input id="claveInput" type="password" placeholder="Clave de administrador" autofocus>
       <div class="error-texto" id="loginError"></div>
       <button class="principal" onclick="iniciarSesion()">ENTRAR</button>
@@ -168,49 +193,96 @@
     <header class="top">
       <h1>PANEL DE ADMINISTRADOR</h1>
       <div class="spacer"></div>
-      <button class="icono" onclick="cargarSolicitudes()">↻ Actualizar</button>
+      <button class="icono" onclick="actualizarTodo()">↻ Actualizar</button>
       <button class="icono" onclick="cerrarSesion()">Cerrar sesión</button>
     </header>
 
-    <div class="resumen">
-      <div class="item">
-        <div class="valor" id="resumenComision">$0</div>
-        <div class="etiqueta">Comisiones de la plataforma (simuladas, 10%)</div>
-      </div>
-      <div class="item">
-        <div class="valor" id="resumenCompletadas">0</div>
-        <div class="etiqueta">Solicitudes completadas</div>
-      </div>
-      <div class="item">
-        <div class="valor" id="resumenTotal">0</div>
-        <div class="etiqueta">Solicitudes totales</div>
-      </div>
+    <div class="tabs">
+      <div class="tab activo" data-tab="solicitudes" onclick="cambiarTab(this)">Solicitudes</div>
+      <div class="tab" data-tab="usuarios" onclick="cambiarTab(this)">Usuarios</div>
     </div>
 
-    <div class="controles">
-      <input id="busqueda" type="text" placeholder="Buscar por alias, localidad o descripción" oninput="renderizar()">
-      <div class="chip activo" data-estado="" onclick="filtrarEstado(this)">Todas</div>
-      <div class="chip" data-estado="pendiente" onclick="filtrarEstado(this)">Buscando colaborador</div>
-      <div class="chip" data-estado="aceptada" onclick="filtrarEstado(this)">Atendiendo</div>
-      <div class="chip" data-estado="completada" onclick="filtrarEstado(this)">Completada</div>
-      <div class="chip" data-estado="cancelada" onclick="filtrarEstado(this)">Cancelada</div>
+    <!-- ============ SOLICITUDES ============ -->
+    <div id="tabSolicitudes">
+      <div class="resumen">
+        <div class="item">
+          <div class="valor" id="resumenComision">$0</div>
+          <div class="etiqueta">Comisiones de la plataforma (simuladas, 10%)</div>
+        </div>
+        <div class="item">
+          <div class="valor" id="resumenCompletadas">0</div>
+          <div class="etiqueta">Solicitudes completadas</div>
+        </div>
+        <div class="item">
+          <div class="valor" id="resumenTotal">0</div>
+          <div class="etiqueta">Solicitudes totales</div>
+        </div>
+      </div>
+
+      <div class="controles">
+        <input id="busquedaSolicitudes" type="text" placeholder="Buscar por alias, localidad o descripción" oninput="renderizarSolicitudes()">
+        <div class="chip activo" data-estado="" onclick="filtrarEstado(this)">Todas</div>
+        <div class="chip" data-estado="pendiente" onclick="filtrarEstado(this)">Buscando colaborador</div>
+        <div class="chip" data-estado="aceptada" onclick="filtrarEstado(this)">Atendiendo</div>
+        <div class="chip" data-estado="completada" onclick="filtrarEstado(this)">Completada</div>
+        <div class="chip" data-estado="cancelada" onclick="filtrarEstado(this)">Cancelada</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Solicitud</th>
+            <th>Cliente / Colaborador</th>
+            <th>Localidad</th>
+            <th>Valor</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="filasSolicitudes"></tbody>
+      </table>
+      <div class="vacio" id="vacioSolicitudes" hidden>Sin solicitudes que coincidan</div>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Solicitud</th>
-          <th>Cliente / Colaborador</th>
-          <th>Localidad</th>
-          <th>Valor</th>
-          <th>Estado</th>
-          <th>Fecha</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="filas"></tbody>
-    </table>
-    <div class="vacio" id="vacio" style="display:none;">Sin solicitudes que coincidan</div>
+    <!-- ============ USUARIOS ============ -->
+    <div id="tabUsuarios" hidden>
+      <div class="resumen">
+        <div class="item">
+          <div class="valor" id="resumenClientes">0</div>
+          <div class="etiqueta">Clientes</div>
+        </div>
+        <div class="item">
+          <div class="valor" id="resumenColaboradores">0</div>
+          <div class="etiqueta">Colaboradores</div>
+        </div>
+        <div class="item">
+          <div class="valor" id="resumenBloqueados">0</div>
+          <div class="etiqueta">Cuentas bloqueadas</div>
+        </div>
+      </div>
+
+      <div class="controles">
+        <input id="busquedaUsuarios" type="text" placeholder="Buscar por alias, nombre o correo" oninput="renderizarUsuarios()">
+        <div class="spacer"></div>
+        <button class="secundario" onclick="abrirModalCrearUsuario()">+ Crear usuario</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Registrado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="filasUsuarios"></tbody>
+      </table>
+      <div class="vacio" id="vacioUsuarios" hidden>Sin usuarios que coincidan</div>
+    </div>
   </div>
 
   <div class="overlay" id="overlay" onclick="if(event.target===this) cerrarModal()">
@@ -227,9 +299,11 @@
   const CATEGORIAS = { personal: 'Personal', comercial: 'Comercial', industrial: 'Industrial' };
   const URGENCIAS = { unaHora: 'En 1 hora', cincoHoras: 'En 5 horas', dosDias: 'En 2 días' };
   const TIPOS = { texto: 'Texto', imagen: 'Imagen', audio: 'Audio', video: 'Video' };
+  const ROLES = { cliente: 'Cliente', colaborador: 'Colaborador', administrador: 'Admin' };
 
   let claveAdmin = sessionStorage.getItem('inspector_admin_clave') || '';
   let solicitudes = [];
+  let usuariosLista = [];
   let filtroEstado = '';
 
   if (window.innerWidth < 900) {
@@ -249,12 +323,24 @@
     return d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function escapar(texto) {
+    return String(texto == null ? '' : texto).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
   async function apiFetch(ruta, opciones) {
-    const resp = await fetch(ruta, {
+    return fetch(ruta, {
       ...opciones,
       headers: { 'Content-Type': 'application/json', 'x-api-key': claveAdmin, ...(opciones && opciones.headers) },
     });
-    return resp;
+  }
+
+  async function apiJson(ruta, opciones) {
+    const resp = await apiFetch(ruta, opciones);
+    const cuerpo = await resp.json().catch(() => ({ ok: false, error: 'Respuesta inválida del servidor' }));
+    if (!cuerpo.ok) throw new Error(cuerpo.error || 'Ocurrió un error');
+    return cuerpo;
   }
 
   async function iniciarSesion() {
@@ -264,7 +350,7 @@
     if (!clave) { errorEl.textContent = 'Escribe la clave.'; return; }
     claveAdmin = clave;
     try {
-      const resp = await fetch('/api/solicitudes/todas', { headers: { 'x-api-key': claveAdmin } });
+      const resp = await fetch('/api/usuarios', { headers: { 'x-api-key': claveAdmin } });
       if (resp.status === 401) { errorEl.textContent = 'Clave incorrecta.'; claveAdmin = ''; return; }
       if (!resp.ok) { errorEl.textContent = 'No se pudo conectar con el servidor.'; return; }
       sessionStorage.setItem('inspector_admin_clave', claveAdmin);
@@ -284,30 +370,43 @@
   function mostrarPanel() {
     document.getElementById('login').style.display = 'none';
     document.getElementById('panel').style.display = 'block';
-    cargarSolicitudes();
+    actualizarTodo();
   }
+
+  function actualizarTodo() {
+    cargarSolicitudes();
+    cargarUsuarios();
+  }
+
+  function cambiarTab(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('activo'));
+    el.classList.add('activo');
+    const esUsuarios = el.dataset.tab === 'usuarios';
+    document.getElementById('tabSolicitudes').hidden = esUsuarios;
+    document.getElementById('tabUsuarios').hidden = !esUsuarios;
+  }
+
+  // ================= SOLICITUDES =================
 
   async function cargarSolicitudes() {
     try {
-      const resp = await apiFetch('/api/solicitudes/todas');
-      const cuerpo = await resp.json();
-      if (!cuerpo.ok) throw new Error(cuerpo.error || 'error');
+      const cuerpo = await apiJson('/api/solicitudes/todas');
       solicitudes = cuerpo.solicitudes || [];
-      renderizar();
+      renderizarSolicitudes();
     } catch (e) {
       alert('No se pudieron cargar las solicitudes: ' + e.message);
     }
   }
 
   function filtrarEstado(el) {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+    document.querySelectorAll('#tabSolicitudes .chip').forEach(c => c.classList.remove('activo'));
     el.classList.add('activo');
     filtroEstado = el.dataset.estado;
-    renderizar();
+    renderizarSolicitudes();
   }
 
-  function renderizar() {
-    const texto = document.getElementById('busqueda').value.trim().toLowerCase();
+  function renderizarSolicitudes() {
+    const texto = document.getElementById('busquedaSolicitudes').value.trim().toLowerCase();
     const filtradas = solicitudes.filter(s => {
       if (filtroEstado && s.estado !== filtroEstado) return false;
       if (!texto) return true;
@@ -323,48 +422,46 @@
     document.getElementById('resumenCompletadas').textContent = completadas.length;
     document.getElementById('resumenTotal').textContent = solicitudes.length;
 
-    const filas = document.getElementById('filas');
-    const vacio = document.getElementById('vacio');
-    filas.innerHTML = '';
-    vacio.style.display = filtradas.length ? 'none' : 'block';
-
-    filtradas.forEach(s => {
+    const filas = document.getElementById('filasSolicitudes');
+    document.getElementById('vacioSolicitudes').hidden = filtradas.length > 0;
+    filas.innerHTML = filtradas.map(s => {
       const tipos = (Array.isArray(s.tipos) ? s.tipos : []).map(t => TIPOS[t] || t).join(' + ');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>
-          <div>${tipos || '—'}</div>
-          <div class="muted">${CATEGORIAS[s.categoria] || s.categoria} · ${URGENCIAS[s.urgencia] || s.urgencia || ''}</div>
-        </td>
-        <td>
-          <div>${s.cliente_alias || ''}</div>
-          <div class="muted">${s.colaborador_alias ? 'Colaborador: ' + s.colaborador_alias : 'Sin colaborador aún'}</div>
-        </td>
-        <td>${s.localidad || ''}</td>
-        <td>${formatearPesos(s.valor_total)}</td>
-        <td><span class="badge">${ESTADOS[s.estado] || s.estado}</span></td>
-        <td class="muted">${formatearFecha(s.fecha_creacion)}</td>
-        <td><button class="btn-eliminar" onclick="event.stopPropagation(); eliminarSolicitud(${s.id})">Eliminar</button></td>
+      return `
+        <tr class="fila-solicitud" onclick='mostrarDetalleSolicitud(${JSON.stringify(s.id)})'>
+          <td>
+            <div>${escapar(tipos) || '—'}</div>
+            <div class="muted">${escapar(CATEGORIAS[s.categoria] || s.categoria)} · ${escapar(URGENCIAS[s.urgencia] || s.urgencia || '')}</div>
+          </td>
+          <td>
+            <div>${escapar(s.cliente_alias)}</div>
+            <div class="muted">${s.colaborador_alias ? 'Colaborador: ' + escapar(s.colaborador_alias) : 'Sin colaborador aún'}</div>
+          </td>
+          <td>${escapar(s.localidad)}</td>
+          <td>${formatearPesos(s.valor_total)}</td>
+          <td><span class="badge">${escapar(ESTADOS[s.estado] || s.estado)}</span></td>
+          <td class="muted">${formatearFecha(s.fecha_creacion)}</td>
+          <td><button class="btn-eliminar" onclick="event.stopPropagation(); eliminarSolicitud(${s.id})">Eliminar</button></td>
+        </tr>
       `;
-      tr.onclick = () => mostrarDetalle(s);
-      filas.appendChild(tr);
-    });
+    }).join('');
   }
 
-  function mostrarDetalle(s) {
+  function mostrarDetalleSolicitud(id) {
+    const s = solicitudes.find(x => x.id === id);
+    if (!s) return;
     const tipos = (Array.isArray(s.tipos) ? s.tipos : []).map(t => TIPOS[t] || t).join(' + ');
     const modal = document.getElementById('modalContenido');
     modal.innerHTML = `
       <h3>Solicitud #${s.id}</h3>
-      <div class="fila"><b>Tipos pedidos</b>${tipos || '—'}</div>
-      <div class="fila"><b>Categoría / Urgencia</b>${CATEGORIAS[s.categoria] || s.categoria} · ${URGENCIAS[s.urgencia] || s.urgencia || ''}</div>
-      <div class="fila"><b>Descripción</b>${(s.descripcion || '').replace(/</g, '&lt;')}</div>
-      <div class="fila"><b>Localidad / Dirección</b>${s.localidad || ''}${s.direccion ? ' · ' + s.direccion : ''}</div>
-      <div class="fila"><b>Cliente</b>${s.cliente_alias || ''}</div>
-      <div class="fila"><b>Colaborador</b>${s.colaborador_alias || 'Sin asignar'}</div>
-      <div class="fila"><b>Estado</b>${ESTADOS[s.estado] || s.estado}</div>
+      <div class="fila"><b>Tipos pedidos</b>${escapar(tipos) || '—'}</div>
+      <div class="fila"><b>Categoría / Urgencia</b>${escapar(CATEGORIAS[s.categoria] || s.categoria)} · ${escapar(URGENCIAS[s.urgencia] || s.urgencia || '')}</div>
+      <div class="fila"><b>Descripción</b>${escapar(s.descripcion)}</div>
+      <div class="fila"><b>Localidad / Dirección</b>${escapar(s.localidad)}${s.direccion ? ' · ' + escapar(s.direccion) : ''}</div>
+      <div class="fila"><b>Cliente</b>${escapar(s.cliente_alias)}</div>
+      <div class="fila"><b>Colaborador</b>${escapar(s.colaborador_alias) || 'Sin asignar'}</div>
+      <div class="fila"><b>Estado</b>${escapar(ESTADOS[s.estado] || s.estado)}</div>
       <div class="fila"><b>Valor de referencia (ficticio)</b>${formatearPesos(s.valor_total)}</div>
-      ${s.metodo_pago ? `<div class="fila"><b>Pago (simulado)</b>${s.metodo_pago} · Ref: ${s.referencia_pago || ''}</div>` : ''}
+      ${s.metodo_pago ? `<div class="fila"><b>Pago (simulado)</b>${escapar(s.metodo_pago)} · Ref: ${escapar(s.referencia_pago)}</div>` : ''}
       <div class="fila"><b>Solicitado</b>${formatearFecha(s.fecha_creacion)}</div>
       ${s.respuesta_fecha ? `<div class="fila"><b>Respondido</b>${formatearFecha(s.respuesta_fecha)}</div>` : ''}
       ${s.imagen_referencia_base64 ? `<div class="fila"><b>Imagen de referencia del cliente</b><img src="data:image/jpeg;base64,${s.imagen_referencia_base64}"></div>` : ''}
@@ -373,19 +470,178 @@
     document.getElementById('overlay').classList.add('visible');
   }
 
+  async function eliminarSolicitud(id) {
+    if (!confirm('¿Eliminar esta solicitud? No se puede deshacer.')) return;
+    try {
+      await apiJson('/api/solicitudes/' + id, { method: 'DELETE' });
+      await cargarSolicitudes();
+    } catch (e) {
+      alert('No se pudo eliminar: ' + e.message);
+    }
+  }
+
   function cerrarModal() {
     document.getElementById('overlay').classList.remove('visible');
   }
 
-  async function eliminarSolicitud(id) {
-    if (!confirm('¿Eliminar esta solicitud? No se puede deshacer.')) return;
+  // ================= USUARIOS =================
+
+  async function cargarUsuarios() {
     try {
-      const resp = await apiFetch('/api/solicitudes/' + id, { method: 'DELETE' });
-      const cuerpo = await resp.json();
-      if (!cuerpo.ok) throw new Error(cuerpo.error || 'error');
-      await cargarSolicitudes();
+      const cuerpo = await apiJson('/api/usuarios');
+      usuariosLista = cuerpo.usuarios || [];
+      renderizarUsuarios();
+    } catch (e) {
+      alert('No se pudieron cargar los usuarios: ' + e.message);
+    }
+  }
+
+  function estaBloqueado(u) {
+    if (!u.bloqueado_hasta) return false;
+    return new Date(u.bloqueado_hasta).getTime() > Date.now();
+  }
+
+  function renderizarUsuarios() {
+    const texto = document.getElementById('busquedaUsuarios').value.trim().toLowerCase();
+    const filtrados = usuariosLista.filter(u => {
+      if (!texto) return true;
+      return (u.alias || '').toLowerCase().includes(texto)
+        || (u.nombre || '').toLowerCase().includes(texto)
+        || (u.correo || '').toLowerCase().includes(texto);
+    });
+
+    document.getElementById('resumenClientes').textContent = usuariosLista.filter(u => u.rol === 'cliente').length;
+    document.getElementById('resumenColaboradores').textContent = usuariosLista.filter(u => u.rol === 'colaborador').length;
+    document.getElementById('resumenBloqueados').textContent = usuariosLista.filter(estaBloqueado).length;
+
+    const filas = document.getElementById('filasUsuarios');
+    document.getElementById('vacioUsuarios').hidden = filtrados.length > 0;
+    filas.innerHTML = filtrados.map(u => {
+      const bloqueado = estaBloqueado(u);
+      const acciones = [];
+      if (u.rol === 'cliente' || u.rol === 'colaborador') {
+        acciones.push(`<button class="btn-accion-mini" onclick="cambiarRol(${u.id}, '${u.rol === 'cliente' ? 'colaborador' : 'cliente'}')">Cambiar a ${u.rol === 'cliente' ? 'Colaborador' : 'Cliente'}</button>`);
+      }
+      if (u.totp_habilitado) {
+        acciones.push(`<button class="btn-accion-mini" onclick="desactivar2fa(${u.id})">Desactivar 2FA</button>`);
+      }
+      if (bloqueado) {
+        acciones.push(`<button class="btn-accion-mini" onclick="quitarBloqueo(${u.id})">Quitar bloqueo</button>`);
+      }
+      acciones.push(`<button class="btn-eliminar" onclick="eliminarUsuario(${u.id}, '${escapar(u.alias)}')">Eliminar</button>`);
+
+      return `
+        <tr>
+          <td>
+            <div style="color:var(--accent); font-weight:600;">${escapar(u.alias)}</div>
+            <div class="muted">${escapar(u.nombre)} · ${u.edad || ''} años</div>
+          </td>
+          <td>${escapar(u.correo)}</td>
+          <td><span class="badge">${escapar(ROLES[u.rol] || 'Sin rol')}</span></td>
+          <td>${bloqueado ? '<span class="badge bloqueado">Bloqueado</span>' : '<span class="muted">Activo</span>'}</td>
+          <td class="muted">${formatearFecha(u.fecha_registro)}</td>
+          <td><div class="acciones-usuario">${acciones.join('')}</div></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function cambiarRol(id, nuevoRol) {
+    try {
+      await apiJson('/api/usuarios/' + id + '/rol', {
+        method: 'PATCH',
+        body: JSON.stringify({ rol: nuevoRol }),
+      });
+      await cargarUsuarios();
+    } catch (e) {
+      alert('No se pudo cambiar el rol: ' + e.message);
+    }
+  }
+
+  async function desactivar2fa(id) {
+    if (!confirm('¿Desactivar el 2FA de esta cuenta? Úsalo solo si la persona perdió su app autenticadora y su correo.')) return;
+    try {
+      await apiJson('/api/usuarios/' + id + '/2fa', { method: 'PATCH', body: JSON.stringify({}) });
+      await cargarUsuarios();
+    } catch (e) {
+      alert('No se pudo desactivar el 2FA: ' + e.message);
+    }
+  }
+
+  async function quitarBloqueo(id) {
+    try {
+      await apiJson('/api/usuarios/' + id + '/bloqueo', {
+        method: 'PATCH',
+        body: JSON.stringify({ bloquear: false }),
+      });
+      await cargarUsuarios();
+    } catch (e) {
+      alert('No se pudo quitar el bloqueo: ' + e.message);
+    }
+  }
+
+  async function eliminarUsuario(id, alias) {
+    if (!confirm(`¿Eliminar la cuenta de "${alias}"? Esto la borra por completo y no se puede deshacer.`)) return;
+    try {
+      await apiJson('/api/usuarios/' + id, { method: 'DELETE' });
+      await cargarUsuarios();
     } catch (e) {
       alert('No se pudo eliminar: ' + e.message);
+    }
+  }
+
+  function abrirModalCrearUsuario() {
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>Crear usuario</h3>
+      <label class="campo">Nombre completo</label>
+      <input id="nuevoNombre" type="text">
+      <label class="campo">Edad</label>
+      <input id="nuevoEdad" type="number" min="18" value="18">
+      <label class="campo">Correo</label>
+      <input id="nuevoCorreo" type="email">
+      <label class="campo">Contraseña</label>
+      <input id="nuevoContrasena" type="password">
+      <label class="campo">Rol</label>
+      <select id="nuevoRol">
+        <option value="">Sin rol (lo elige al entrar)</option>
+        <option value="cliente">Cliente</option>
+        <option value="colaborador">Colaborador</option>
+      </select>
+      <div class="error-texto" id="crearUsuarioError"></div>
+      <button class="principal" onclick="crearUsuario()">CREAR CUENTA</button>
+      <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  async function crearUsuario() {
+    const nombre = document.getElementById('nuevoNombre').value.trim();
+    const edad = Number(document.getElementById('nuevoEdad').value);
+    const correo = document.getElementById('nuevoCorreo').value.trim();
+    const contrasena = document.getElementById('nuevoContrasena').value;
+    const rol = document.getElementById('nuevoRol').value || undefined;
+    const errorEl = document.getElementById('crearUsuarioError');
+    errorEl.textContent = '';
+
+    if (!nombre || !correo || !contrasena || !edad) {
+      errorEl.textContent = 'Completa todos los campos.';
+      return;
+    }
+    if (contrasena.length < 6) {
+      errorEl.textContent = 'La contraseña debe tener mínimo 6 caracteres.';
+      return;
+    }
+    try {
+      const cuerpo = await apiJson('/api/usuarios/admin-crear', {
+        method: 'POST',
+        body: JSON.stringify({ nombre, edad, correo, contrasena, rol }),
+      });
+      cerrarModal();
+      await cargarUsuarios();
+      alert(`Cuenta creada. Alias: ${cuerpo.usuario.alias}`);
+    } catch (e) {
+      errorEl.textContent = e.message;
     }
   }
 
