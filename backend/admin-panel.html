@@ -30,13 +30,11 @@
 
   /* ---- Logo ---- */
   .logo { display: flex; align-items: center; gap: 10px; }
-  .logo svg { display: block; flex-shrink: 0; }
+  .logo img { display: block; flex-shrink: 0; border-radius: 8px; }
   .logo .marca { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--text-primary); }
   .logo .marca b { color: var(--accent); }
   #login .logo { justify-content: center; margin-bottom: 22px; }
-  #login .logo svg { width: 40px; height: 40px; }
   #login .logo .marca { font-size: 22px; }
-  header.top .logo svg { width: 26px; height: 26px; }
 
   /* ---- Aviso de pantalla pequeña (pensado para PC, no celular) ---- */
   #avisoMovil {
@@ -192,11 +190,7 @@
   <div id="login">
     <div class="caja">
       <div class="logo">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="23" stroke="#ffd700" stroke-width="2"/>
-          <circle cx="21" cy="21" r="9" stroke="#ffd700" stroke-width="2.5"/>
-          <line x1="27.5" y1="27.5" x2="35" y2="35" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/>
-        </svg>
+        <img src="/logo.png" alt="Inspector" width="44" height="44">
         <span class="marca"><b>INSPECT</b>OR</span>
       </div>
       <p style="text-align:center;">Panel de administrador — pensado para computador.</p>
@@ -209,11 +203,7 @@
   <div id="panel">
     <header class="top">
       <div class="logo">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="24" cy="24" r="23" stroke="#ffd700" stroke-width="2"/>
-          <circle cx="21" cy="21" r="9" stroke="#ffd700" stroke-width="2.5"/>
-          <line x1="27.5" y1="27.5" x2="35" y2="35" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/>
-        </svg>
+        <img src="/logo.png" alt="Inspector" width="30" height="30">
         <span class="marca"><b>INSPECT</b>OR</span>
       </div>
       <h1 style="font-size:13px; color:var(--text-muted); letter-spacing:1.5px; margin-left:6px;">PANEL DE ADMINISTRADOR</h1>

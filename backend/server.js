@@ -8,6 +8,8 @@ const usuarios = require('./usuarios');
 
 const app = express();
 app.use(cors());
+// Assets estáticos del panel de administrador (el logo de la app).
+app.use(express.static(path.join(__dirname, 'public')));
 // Límite alto porque una respuesta puede traer foto/audio/video en
 // base64 dentro del body (el video es lo más pesado).
 app.use(express.json({ limit: '60mb' }));
