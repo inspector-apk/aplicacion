@@ -113,10 +113,9 @@ class Solicitud {
   /// `lib/core/precios.dart`.
   final int valorTotal;
 
-  /// Datos de la pasarela de pago FICTICIA (ver
-  /// `lib/screens/pago_ficticio_screen.dart`): no hay ningún cobro real,
-  /// ni tarjeta ni dinero de por medio. Solo se guarda una referencia y
-  /// una descripción del "método" simulado para mostrar en el historial.
+  /// Datos del pago real por PSE (ver `lib/screens/pago_pse_screen.dart`
+  /// y `backend/wompi.js`): referencia propia y método usado, para
+  /// mostrar en el historial.
   final String referenciaPago;
   final String metodoPago;
 

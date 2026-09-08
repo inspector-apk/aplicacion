@@ -22,7 +22,7 @@ import '../widgets/map_top_bar.dart';
 import '../widgets/imagen_referencia_thumb.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'home_screen.dart';
-import 'pago_ficticio_screen.dart';
+import 'pago_pse_screen.dart';
 import 'seleccionar_punto_screen.dart';
 import 'ver_respuesta_screen.dart';
 
@@ -178,12 +178,15 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       return;
     }
 
-    // Antes de enviar, pasa por la pasarela de pago (simulada, sin
-    // cobro real) — como haría una app de verdad.
-    final resultadoPago = await Navigator.of(context).push<ResultadoPagoFicticio>(
+    // Antes de enviar, pasa por la pasarela de pago real por PSE.
+    final resultadoPago = await Navigator.of(context).push<ResultadoPago>(
       AppRoutes.slide(
-        PagoFicticioScreen(
-            categoria: _categoria, tipos: _tipos, urgencia: _urgencia),
+        PagoPseScreen(
+          categoria: _categoria,
+          tipos: _tipos,
+          urgencia: _urgencia,
+          correoCliente: widget.usuario.correo,
+        ),
       ),
     );
     if (resultadoPago == null) return; // canceló el pago
@@ -221,7 +224,7 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       });
       await _cargarSolicitudActiva();
       if (mounted) {
-        _mostrarMensaje('Pago simulado exitoso · Ref: ${resultadoPago.referencia}');
+        _mostrarMensaje('Pago aprobado · Ref: ${resultadoPago.referencia}');
       }
     } on SolicitudException catch (e) {
       _mostrarMensaje(e.mensaje);
@@ -667,7 +670,7 @@ class _PanelFormulario extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Valor de referencia (ficticio): ${formatearPesos(valorTotal)}',
+                    'Valor a pagar: ${formatearPesos(valorTotal)}',
                     style: const TextStyle(
                       color: AppColors.accent,
                       fontWeight: FontWeight.w700,
@@ -805,13 +808,12 @@ class _PanelSeguimiento extends StatelessWidget {
               icono: Icons.notes_outlined, texto: solicitud.descripcion),
           SolicitudInfoRow(
               icono: Icons.sell_outlined,
-              texto:
-                  'Valor de referencia (ficticio): ${formatearPesos(solicitud.valorTotal)}'),
+              texto: 'Valor: ${formatearPesos(solicitud.valorTotal)}'),
           if (solicitud.metodoPago.isNotEmpty)
             SolicitudInfoRow(
                 icono: Icons.check_circle_outline,
                 texto:
-                    'Pagado (simulado) · ${solicitud.metodoPago} · Ref: ${solicitud.referenciaPago}'),
+                    'Pagado · ${solicitud.metodoPago} · Ref: ${solicitud.referenciaPago}'),
           if (solicitud.imagenReferenciaBase64 != null) ...[
             const SizedBox(height: 12),
             ImagenReferenciaThumb(
