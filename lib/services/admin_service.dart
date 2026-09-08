@@ -56,7 +56,8 @@ class AdminService {
   }
 
   /// Quita antes de tiempo el bloqueo de 5 minutos que se aplica cuando
-  /// un colaborador cancela una solicitud ya aceptada.
+  /// un colaborador cancela una solicitud ya aceptada, o una suspensión
+  /// manual del admin.
   static Future<void> quitarBloqueo(int id) async {
     await http
         .patch(
@@ -65,6 +66,54 @@ class AdminService {
           body: jsonEncode({'bloquear': false}),
         )
         .timeout(const Duration(seconds: 15));
+  }
+
+  /// Suspende una cuenta indefinidamente (a diferencia del bloqueo
+  /// automático de 5 minutos por cancelar una solicitud aceptada). Se
+  /// levanta con [quitarBloqueo].
+  static Future<void> suspenderUsuario(int id) async {
+    await http
+        .patch(_uri('/api/usuarios/$id/suspender'),
+            headers: _headers, body: jsonEncode({}))
+        .timeout(const Duration(seconds: 15));
+  }
+
+  /// Cambia nombre/edad/correo de una cuenta (herramienta de soporte).
+  /// Devuelve un mensaje de error si el correo ya está en uso, o null si
+  /// se guardó bien.
+  static Future<String?> actualizarDatosUsuario(
+    int id, {
+    required String nombre,
+    required int edad,
+    required String correo,
+  }) async {
+    final resp = await http
+        .patch(
+          _uri('/api/usuarios/$id/datos'),
+          headers: _headers,
+          body: jsonEncode({'nombre': nombre, 'edad': edad, 'correo': correo}),
+        )
+        .timeout(const Duration(seconds: 15));
+    final cuerpo = jsonDecode(resp.body) as Map<String, dynamic>;
+    if (cuerpo['ok'] == true) return null;
+    return cuerpo['error'] as String? ?? 'No se pudo actualizar';
+  }
+
+  /// Fija una contraseña nueva directamente (herramienta de soporte, para
+  /// cuando alguien no puede completar la recuperación normal por
+  /// correo). Devuelve un mensaje de error, o null si se guardó bien.
+  static Future<String?> resetearContrasenaUsuario(
+      int id, String contrasenaNueva) async {
+    final resp = await http
+        .patch(
+          _uri('/api/usuarios/$id/resetear-contrasena'),
+          headers: _headers,
+          body: jsonEncode({'contrasena': contrasenaNueva}),
+        )
+        .timeout(const Duration(seconds: 15));
+    final cuerpo = jsonDecode(resp.body) as Map<String, dynamic>;
+    if (cuerpo['ok'] == true) return null;
+    return cuerpo['error'] as String? ?? 'No se pudo restablecer';
   }
 
   static Future<List<Solicitud>> todasLasSolicitudes() async {

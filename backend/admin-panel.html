@@ -28,6 +28,16 @@
   a { color: var(--accent); }
   [hidden] { display: none !important; }
 
+  /* ---- Logo ---- */
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo svg { display: block; flex-shrink: 0; }
+  .logo .marca { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--text-primary); }
+  .logo .marca b { color: var(--accent); }
+  #login .logo { justify-content: center; margin-bottom: 22px; }
+  #login .logo svg { width: 40px; height: 40px; }
+  #login .logo .marca { font-size: 22px; }
+  header.top .logo svg { width: 26px; height: 26px; }
+
   /* ---- Aviso de pantalla pequeña (pensado para PC, no celular) ---- */
   #avisoMovil {
     position: fixed; inset: 0; z-index: 50;
@@ -181,8 +191,15 @@
 
   <div id="login">
     <div class="caja">
-      <h1>INSPECTOR</h1>
-      <p>Panel de administrador — pensado para computador.</p>
+      <div class="logo">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="23" stroke="#ffd700" stroke-width="2"/>
+          <circle cx="21" cy="21" r="9" stroke="#ffd700" stroke-width="2.5"/>
+          <line x1="27.5" y1="27.5" x2="35" y2="35" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span class="marca"><b>INSPECT</b>OR</span>
+      </div>
+      <p style="text-align:center;">Panel de administrador — pensado para computador.</p>
       <input id="claveInput" type="password" placeholder="Clave de administrador" autofocus>
       <div class="error-texto" id="loginError"></div>
       <button class="principal" onclick="iniciarSesion()">ENTRAR</button>
@@ -191,7 +208,15 @@
 
   <div id="panel">
     <header class="top">
-      <h1>PANEL DE ADMINISTRADOR</h1>
+      <div class="logo">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="23" stroke="#ffd700" stroke-width="2"/>
+          <circle cx="21" cy="21" r="9" stroke="#ffd700" stroke-width="2.5"/>
+          <line x1="27.5" y1="27.5" x2="35" y2="35" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span class="marca"><b>INSPECT</b>OR</span>
+      </div>
+      <h1 style="font-size:13px; color:var(--text-muted); letter-spacing:1.5px; margin-left:6px;">PANEL DE ADMINISTRADOR</h1>
       <div class="spacer"></div>
       <button class="icono" onclick="actualizarTodo()">↻ Actualizar</button>
       <button class="icono" onclick="cerrarSesion()">Cerrar sesión</button>
@@ -208,6 +233,10 @@
         <div class="item">
           <div class="valor" id="resumenComision">$0</div>
           <div class="etiqueta">Comisiones de la plataforma (simuladas, 10%)</div>
+        </div>
+        <div class="item">
+          <div class="valor" id="resumenIngresos">$0</div>
+          <div class="etiqueta">Valor bruto completado (simulado)</div>
         </div>
         <div class="item">
           <div class="valor" id="resumenCompletadas">0</div>
@@ -257,13 +286,21 @@
           <div class="etiqueta">Colaboradores</div>
         </div>
         <div class="item">
+          <div class="valor" id="resumenAdmins">0</div>
+          <div class="etiqueta">Administradores</div>
+        </div>
+        <div class="item">
           <div class="valor" id="resumenBloqueados">0</div>
-          <div class="etiqueta">Cuentas bloqueadas</div>
+          <div class="etiqueta">Cuentas bloqueadas / suspendidas</div>
         </div>
       </div>
 
       <div class="controles">
         <input id="busquedaUsuarios" type="text" placeholder="Buscar por alias, nombre o correo" oninput="renderizarUsuarios()">
+        <div class="chip activo" data-rol="" onclick="filtrarRol(this)">Todos</div>
+        <div class="chip" data-rol="cliente" onclick="filtrarRol(this)">Clientes</div>
+        <div class="chip" data-rol="colaborador" onclick="filtrarRol(this)">Colaboradores</div>
+        <div class="chip" data-rol="administrador" onclick="filtrarRol(this)">Admins</div>
         <div class="spacer"></div>
         <button class="secundario" onclick="abrirModalCrearUsuario()">+ Crear usuario</button>
       </div>
@@ -305,6 +342,7 @@
   let solicitudes = [];
   let usuariosLista = [];
   let filtroEstado = '';
+  let filtroRol = '';
 
   if (window.innerWidth < 900) {
     document.getElementById('avisoMovil').classList.remove('oculto');
@@ -418,7 +456,9 @@
 
     const completadas = solicitudes.filter(s => s.estado === 'completada');
     const comisionTotal = completadas.reduce((suma, s) => suma + Math.round((s.valor_total || 0) * 0.10), 0);
+    const ingresoTotal = completadas.reduce((suma, s) => suma + (s.valor_total || 0), 0);
     document.getElementById('resumenComision').textContent = formatearPesos(comisionTotal);
+    document.getElementById('resumenIngresos').textContent = formatearPesos(ingresoTotal);
     document.getElementById('resumenCompletadas').textContent = completadas.length;
     document.getElementById('resumenTotal').textContent = solicitudes.length;
 
@@ -501,9 +541,17 @@
     return new Date(u.bloqueado_hasta).getTime() > Date.now();
   }
 
+  function filtrarRol(el) {
+    document.querySelectorAll('#tabUsuarios .chip').forEach(c => c.classList.remove('activo'));
+    el.classList.add('activo');
+    filtroRol = el.dataset.rol;
+    renderizarUsuarios();
+  }
+
   function renderizarUsuarios() {
     const texto = document.getElementById('busquedaUsuarios').value.trim().toLowerCase();
     const filtrados = usuariosLista.filter(u => {
+      if (filtroRol && u.rol !== filtroRol) return false;
       if (!texto) return true;
       return (u.alias || '').toLowerCase().includes(texto)
         || (u.nombre || '').toLowerCase().includes(texto)
@@ -512,6 +560,7 @@
 
     document.getElementById('resumenClientes').textContent = usuariosLista.filter(u => u.rol === 'cliente').length;
     document.getElementById('resumenColaboradores').textContent = usuariosLista.filter(u => u.rol === 'colaborador').length;
+    document.getElementById('resumenAdmins').textContent = usuariosLista.filter(u => u.rol === 'administrador').length;
     document.getElementById('resumenBloqueados').textContent = usuariosLista.filter(estaBloqueado).length;
 
     const filas = document.getElementById('filasUsuarios');
@@ -519,14 +568,17 @@
     filas.innerHTML = filtrados.map(u => {
       const bloqueado = estaBloqueado(u);
       const acciones = [];
-      if (u.rol === 'cliente' || u.rol === 'colaborador') {
-        acciones.push(`<button class="btn-accion-mini" onclick="cambiarRol(${u.id}, '${u.rol === 'cliente' ? 'colaborador' : 'cliente'}')">Cambiar a ${u.rol === 'cliente' ? 'Colaborador' : 'Cliente'}</button>`);
-      }
+      acciones.push(`<button class="btn-accion-mini" onclick='abrirModalDetalleUsuario(${u.id})'>Ver detalle</button>`);
+      acciones.push(`<button class="btn-accion-mini" onclick='abrirModalEditarUsuario(${u.id})'>Editar datos</button>`);
+      acciones.push(`<button class="btn-accion-mini" onclick='abrirModalCambiarRol(${u.id})'>Cambiar rol</button>`);
+      acciones.push(`<button class="btn-accion-mini" onclick='abrirModalResetearContrasena(${u.id})'>Restablecer contraseña</button>`);
       if (u.totp_habilitado) {
         acciones.push(`<button class="btn-accion-mini" onclick="desactivar2fa(${u.id})">Desactivar 2FA</button>`);
       }
       if (bloqueado) {
         acciones.push(`<button class="btn-accion-mini" onclick="quitarBloqueo(${u.id})">Quitar bloqueo</button>`);
+      } else {
+        acciones.push(`<button class="btn-accion-mini" onclick="suspenderUsuario(${u.id}, '${escapar(u.alias)}')">Suspender cuenta</button>`);
       }
       acciones.push(`<button class="btn-eliminar" onclick="eliminarUsuario(${u.id}, '${escapar(u.alias)}')">Eliminar</button>`);
 
@@ -552,9 +604,136 @@
         method: 'PATCH',
         body: JSON.stringify({ rol: nuevoRol }),
       });
+      cerrarModal();
       await cargarUsuarios();
     } catch (e) {
       alert('No se pudo cambiar el rol: ' + e.message);
+    }
+  }
+
+  function abrirModalCambiarRol(id) {
+    const u = usuariosLista.find(x => x.id === id);
+    if (!u) return;
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>Cambiar rol de "${escapar(u.alias)}"</h3>
+      <label class="campo">Nuevo rol</label>
+      <select id="rolSeleccionado">
+        <option value="cliente" ${u.rol === 'cliente' ? 'selected' : ''}>Cliente</option>
+        <option value="colaborador" ${u.rol === 'colaborador' ? 'selected' : ''}>Colaborador</option>
+        <option value="administrador" ${u.rol === 'administrador' ? 'selected' : ''}>Administrador</option>
+      </select>
+      <button class="principal" onclick="cambiarRol(${id}, document.getElementById('rolSeleccionado').value)">GUARDAR</button>
+      <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  function abrirModalDetalleUsuario(id) {
+    const u = usuariosLista.find(x => x.id === id);
+    if (!u) return;
+    const bloqueado = estaBloqueado(u);
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>${escapar(u.alias)}</h3>
+      <div class="fila"><b>Nombre</b>${escapar(u.nombre)}</div>
+      <div class="fila"><b>Edad</b>${u.edad || '—'}</div>
+      <div class="fila"><b>Correo</b>${escapar(u.correo)}</div>
+      <div class="fila"><b>Rol</b>${escapar(ROLES[u.rol] || 'Sin rol')}</div>
+      <div class="fila"><b>Registrado</b>${formatearFecha(u.fecha_registro)}</div>
+      <div class="fila"><b>Verificación en dos pasos</b>${u.totp_habilitado ? 'Activa' : 'Desactivada'}</div>
+      <div class="fila"><b>Estado de la cuenta</b>${bloqueado ? 'Bloqueada/suspendida' : 'Activa'}</div>
+      ${u.ocupacion || u.localidad_trabajo ? `<div class="fila"><b>Perfil de colaborador</b>${escapar(u.ocupacion || '')}${u.localidad_trabajo ? ' · ' + escapar(u.localidad_trabajo) : ''}</div>` : ''}
+      ${u.banco_ficticio || u.numero_cuenta_ficticia ? `<div class="fila"><b>Cuenta bancaria (ficticia)</b>${escapar(u.banco_ficticio || '')}${u.numero_cuenta_ficticia ? ' · ' + escapar(u.numero_cuenta_ficticia) : ''}</div>` : ''}
+      <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  function abrirModalEditarUsuario(id) {
+    const u = usuariosLista.find(x => x.id === id);
+    if (!u) return;
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>Editar datos de "${escapar(u.alias)}"</h3>
+      <label class="campo">Nombre completo</label>
+      <input id="editNombre" type="text" value="${escapar(u.nombre)}">
+      <label class="campo">Edad</label>
+      <input id="editEdad" type="number" min="18" value="${u.edad || 18}">
+      <label class="campo">Correo</label>
+      <input id="editCorreo" type="email" value="${escapar(u.correo)}">
+      <div class="error-texto" id="editUsuarioError"></div>
+      <button class="principal" onclick="guardarEdicionUsuario(${id})">GUARDAR</button>
+      <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  async function guardarEdicionUsuario(id) {
+    const nombre = document.getElementById('editNombre').value.trim();
+    const edad = Number(document.getElementById('editEdad').value);
+    const correo = document.getElementById('editCorreo').value.trim();
+    const errorEl = document.getElementById('editUsuarioError');
+    errorEl.textContent = '';
+    if (!nombre || !correo || !edad) {
+      errorEl.textContent = 'Completa todos los campos.';
+      return;
+    }
+    try {
+      await apiJson('/api/usuarios/' + id + '/datos', {
+        method: 'PATCH',
+        body: JSON.stringify({ nombre, edad, correo }),
+      });
+      cerrarModal();
+      await cargarUsuarios();
+    } catch (e) {
+      errorEl.textContent = e.message;
+    }
+  }
+
+  function abrirModalResetearContrasena(id) {
+    const u = usuariosLista.find(x => x.id === id);
+    if (!u) return;
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>Restablecer contraseña de "${escapar(u.alias)}"</h3>
+      <p style="color:var(--text-secondary); font-size:12.5px; margin:-6px 0 14px;">Úsalo solo como soporte, cuando la persona no puede recuperarla por correo. Avísale la contraseña nueva por otro canal seguro.</p>
+      <label class="campo">Contraseña nueva</label>
+      <input id="nuevaContrasenaReset" type="password" placeholder="Mínimo 6 caracteres">
+      <div class="error-texto" id="resetContrasenaError"></div>
+      <button class="principal" onclick="confirmarResetContrasena(${id})">RESTABLECER</button>
+      <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  async function confirmarResetContrasena(id) {
+    const contrasena = document.getElementById('nuevaContrasenaReset').value;
+    const errorEl = document.getElementById('resetContrasenaError');
+    errorEl.textContent = '';
+    if (!contrasena || contrasena.length < 6) {
+      errorEl.textContent = 'La contraseña debe tener mínimo 6 caracteres.';
+      return;
+    }
+    try {
+      await apiJson('/api/usuarios/' + id + '/resetear-contrasena', {
+        method: 'PATCH',
+        body: JSON.stringify({ contrasena }),
+      });
+      cerrarModal();
+      alert('Contraseña restablecida.');
+    } catch (e) {
+      errorEl.textContent = e.message;
+    }
+  }
+
+  async function suspenderUsuario(id, alias) {
+    if (!confirm(`¿Suspender la cuenta de "${alias}"? No podrá iniciar sesión hasta que le quites la suspensión.`)) return;
+    try {
+      await apiJson('/api/usuarios/' + id + '/suspender', { method: 'PATCH', body: JSON.stringify({}) });
+      await cargarUsuarios();
+    } catch (e) {
+      alert('No se pudo suspender: ' + e.message);
     }
   }
 
@@ -607,6 +786,7 @@
         <option value="">Sin rol (lo elige al entrar)</option>
         <option value="cliente">Cliente</option>
         <option value="colaborador">Colaborador</option>
+        <option value="administrador">Administrador</option>
       </select>
       <div class="error-texto" id="crearUsuarioError"></div>
       <button class="principal" onclick="crearUsuario()">CREAR CUENTA</button>

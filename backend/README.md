@@ -107,12 +107,16 @@ Es un solo archivo estático (`backend/admin-panel.html`, sin
 dependencias ni build) servido por el mismo backend en la ruta `/admin`,
 con dos pestañas:
 
-- **Usuarios**: buscar, ver resumen (clientes/colaboradores/bloqueados),
-  **crear una cuenta nueva** (nombre, edad, correo, contraseña y rol —
-  usa `POST /api/usuarios/admin-crear`), cambiar el rol de alguien,
-  desactivar su 2FA, quitar un bloqueo temporal, y eliminar la cuenta.
+- **Usuarios**: buscar, filtrar por rol, ver resumen (clientes /
+  colaboradores / administradores / bloqueados), **crear una cuenta
+  nueva** (nombre, edad, correo, contraseña y rol, incluyendo
+  administrador), y por cada cuenta: ver el detalle completo (perfil de
+  colaborador, cuenta bancaria ficticia, estado del 2FA...), editar sus
+  datos básicos, cambiar su rol, restablecer su contraseña
+  directamente, desactivar su 2FA, suspenderla o quitarle una
+  suspensión/bloqueo, y eliminarla.
 - **Solicitudes**: buscar, filtrar por estado, ver el resumen de
-  comisiones y eliminar.
+  ingresos y comisiones, y eliminar.
 
 Para entrar, pide la misma `API_KEY` del `.env` como "clave de
 administrador" — no agrega ningún sistema de autenticación nuevo, solo
@@ -151,14 +155,17 @@ propio límite de tamaño de body, revisa que también lo permita
 - `POST /api/usuarios/login` (`correo, contrasenaHash`) — paso 2: compara el hash y devuelve la cuenta si coincide
 - `GET /api/usuarios/buscar-recuperacion?texto=...` — busca por alias o nombre completo (recuperación de contraseña); devuelve `id, alias, correo` para que la app verifique el correo antes de dejar cambiarla
 - `GET /api/usuarios/:id` — trae una cuenta actualizada (tras cualquier cambio)
-- `PATCH /api/usuarios/:id/rol` (`rol`) — cambia el rol (`cliente`/`colaborador`)
-- `PATCH /api/usuarios/:id/contrasena` (`contrasenaHash, salt`) — cambia la contraseña (ya hasheada)
+- `PATCH /api/usuarios/:id/rol` (`rol`: `cliente`/`colaborador`/`administrador`) — cambia el rol, incluyendo promover o bajar a alguien de administrador
+- `PATCH /api/usuarios/:id/contrasena` (`contrasenaHash, salt`) — cambia la contraseña (ya hasheada), lo usa la propia cuenta
+- `PATCH /api/usuarios/:id/datos` (`nombre, edad, correo`) — herramienta de soporte del admin: edita los datos básicos de una cuenta
+- `PATCH /api/usuarios/:id/resetear-contrasena` (`contrasena` en texto plano) — herramienta de soporte del admin: fija una contraseña nueva directamente (para cuando alguien no puede recuperarla por correo); el servidor la hashea ahí mismo
 - `PATCH /api/usuarios/:id/2fa` (`secreto` opcional) — activa el 2FA (si viene `secreto`) o lo desactiva (si no viene)
 - `PATCH /api/usuarios/:id/perfil-colaborador` (`ocupacion, localidadTrabajo`)
 - `PATCH /api/usuarios/:id/cuenta-bancaria` (`banco, numeroCuenta`) — ficticia, ver la app
-- `PATCH /api/usuarios/:id/bloqueo` (`bloquear: true/false`) — pone o quita el bloqueo de 5 minutos por cancelar una solicitud aceptada
+- `PATCH /api/usuarios/:id/bloqueo` (`bloquear: true/false`) — pone o quita el bloqueo de 5 minutos por cancelar una solicitud aceptada (`bloquear:false` también levanta una suspensión manual del admin)
+- `PATCH /api/usuarios/:id/suspender` — suspensión manual e indefinida del admin (a diferencia del bloqueo automático de 5 minutos); se levanta con `PATCH .../bloqueo` (`bloquear:false`)
 - `GET /api/usuarios` — lista todas las cuentas (sin hash/salt/secreto TOTP), para el panel de administrador
-- `POST /api/usuarios/admin-crear` (`nombre, edad, correo, contrasena` en texto plano, `rol` opcional) — el admin crea una cuenta directamente desde el panel web; el servidor genera el salt y hashea ahí mismo
+- `POST /api/usuarios/admin-crear` (`nombre, edad, correo, contrasena` en texto plano, `rol` opcional incluyendo `administrador`) — el admin crea una cuenta directamente desde el panel web; el servidor genera el salt y hashea ahí mismo
 - `DELETE /api/usuarios/:id` — elimina una cuenta, para el panel de administrador
 
 ### Sobre la privacidad de las respuestas

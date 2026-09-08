@@ -161,6 +161,31 @@ function actualizarContrasena(id, contrasenaHash, salt) {
   db.prepare('UPDATE usuarios SET contrasena_hash = ?, salt = ? WHERE id = ?').run(contrasenaHash, salt, id);
 }
 
+/** Herramienta de soporte del admin: cambia nombre/edad/correo de una cuenta. */
+function actualizarDatos(id, { nombre, edad, correo }) {
+  const correoNormalizado = correo.trim().toLowerCase();
+  const enUso = db
+    .prepare('SELECT 1 FROM usuarios WHERE LOWER(correo) = ? AND id != ?')
+    .get(correoNormalizado, id);
+  if (enUso) {
+    throw new ErrorUsuario('Ya existe otra cuenta registrada con ese correo.');
+  }
+  db.prepare('UPDATE usuarios SET nombre = ?, edad = ?, correo = ? WHERE id = ?')
+    .run(nombre.trim(), edad, correoNormalizado, id);
+}
+
+/**
+ * Herramienta de soporte del admin: fija una contraseña nueva en texto
+ * plano directamente desde el panel (para cuando alguien no puede
+ * completar la recuperación normal por correo). El servidor genera un
+ * salt nuevo y hashea aquí mismo, igual que en `crear`.
+ */
+function resetearContrasena(id, contrasenaPlano) {
+  const salt = generarSalt();
+  const hash = hashear(contrasenaPlano, salt);
+  actualizarContrasena(id, hash, salt);
+}
+
 function activarTotp(id, secreto) {
   db.prepare('UPDATE usuarios SET totp_secret = ?, totp_habilitado = 1 WHERE id = ?').run(secreto, id);
 }
@@ -187,6 +212,17 @@ function quitarBloqueo(id) {
   db.prepare('UPDATE usuarios SET bloqueado_hasta = NULL WHERE id = ?').run(id);
 }
 
+// Un umbral así de lejano (100 años) se usa como "suspensión indefinida"
+// desde el panel de admin, reutilizando el mismo campo del bloqueo
+// temporal de 5 minutos por cancelar una solicitud — a la app y al panel
+// les basta con saber si `bloqueado_hasta` sigue en el futuro o no.
+const MINUTOS_SUSPENSION_INDEFINIDA = 100 * 365 * 24 * 60;
+
+function suspender(id) {
+  const hasta = new Date(Date.now() + MINUTOS_SUSPENSION_INDEFINIDA * 60 * 1000).toISOString();
+  bloquearHasta(id, hasta);
+}
+
 function eliminar(id) {
   db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
 }
@@ -203,11 +239,14 @@ module.exports = {
   listarTodos,
   actualizarRol,
   actualizarContrasena,
+  actualizarDatos,
+  resetearContrasena,
   activarTotp,
   desactivarTotp,
   actualizarPerfilColaborador,
   actualizarCuentaBancaria,
   bloquearHasta,
   quitarBloqueo,
+  suspender,
   eliminar,
 };

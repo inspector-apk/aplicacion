@@ -321,9 +321,11 @@ app.get('/api/usuarios/:id', requiereApiKey, (req, res) => {
   res.json({ ok: true, usuario });
 });
 
+// Incluye 'administrador': el admin puede promover a alguien a admin o
+// bajarlo de vuelta a cliente/colaborador desde el panel.
 app.patch('/api/usuarios/:id/rol', requiereApiKey, (req, res) => {
   const { rol } = req.body;
-  if (!['cliente', 'colaborador'].includes(rol)) {
+  if (!['cliente', 'colaborador', 'administrador'].includes(rol)) {
     return res.status(400).json({ ok: false, error: 'rol inválido' });
   }
   usuarios.actualizarRol(Number(req.params.id), rol);
@@ -336,6 +338,37 @@ app.patch('/api/usuarios/:id/contrasena', requiereApiKey, (req, res) => {
     return res.status(400).json({ ok: false, error: 'contrasenaHash y salt son requeridos' });
   }
   usuarios.actualizarContrasena(Number(req.params.id), contrasenaHash, salt);
+  res.json({ ok: true });
+});
+
+// Herramienta de soporte del admin: cambia nombre/edad/correo de una
+// cuenta directamente desde el panel.
+app.patch('/api/usuarios/:id/datos', requiereApiKey, (req, res) => {
+  const { nombre, edad, correo } = req.body;
+  if (!nombre || !correo || typeof edad !== 'number') {
+    return res.status(400).json({ ok: false, error: 'Faltan datos' });
+  }
+  const id = Number(req.params.id);
+  try {
+    usuarios.actualizarDatos(id, { nombre, edad, correo });
+    res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+  } catch (err) {
+    if (err instanceof usuarios.ErrorUsuario) {
+      return res.status(409).json({ ok: false, error: err.message });
+    }
+    res.status(500).json({ ok: false, error: 'No se pudo actualizar' });
+  }
+});
+
+// Herramienta de soporte del admin: fija una contraseña nueva en texto
+// plano directamente (para cuando alguien no puede completar la
+// recuperación normal por correo). El servidor la hashea aquí mismo.
+app.patch('/api/usuarios/:id/resetear-contrasena', requiereApiKey, (req, res) => {
+  const { contrasena } = req.body;
+  if (!contrasena || contrasena.length < 6) {
+    return res.status(400).json({ ok: false, error: 'La contraseña debe tener mínimo 6 caracteres' });
+  }
+  usuarios.resetearContrasena(Number(req.params.id), contrasena);
   res.json({ ok: true });
 });
 
@@ -375,6 +408,15 @@ app.patch('/api/usuarios/:id/bloqueo', requiereApiKey, (req, res) => {
   res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
 });
 
+// Suspensión manual del admin (indefinida, no los 5 minutos automáticos
+// por cancelar una solicitud) y su reverso — este último es el mismo
+// "quitar bloqueo" de arriba, así que no hace falta duplicarlo.
+app.patch('/api/usuarios/:id/suspender', requiereApiKey, (req, res) => {
+  const id = Number(req.params.id);
+  usuarios.suspender(id);
+  res.json({ ok: true, usuario: usuarios.obtenerPorId(id) });
+});
+
 // ---- Solo para el panel de administrador ----
 
 app.get('/api/usuarios', requiereApiKey, (req, res) => {
@@ -389,7 +431,7 @@ app.post('/api/usuarios/admin-crear', requiereApiKey, (req, res) => {
   if (!nombre || !correo || !contrasena || typeof edad !== 'number') {
     return res.status(400).json({ ok: false, error: 'Faltan datos' });
   }
-  if (rol && !['cliente', 'colaborador'].includes(rol)) {
+  if (rol && !['cliente', 'colaborador', 'administrador'].includes(rol)) {
     return res.status(400).json({ ok: false, error: 'rol inválido' });
   }
   try {

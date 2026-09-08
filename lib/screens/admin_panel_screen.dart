@@ -128,10 +128,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       builder: (context) => SimpleDialog(
         title: Text('Cambiar rol de "${u.alias}"'),
         children: [
-          for (final r in [RolUsuario.cliente, RolUsuario.colaborador])
+          for (final r in [
+            RolUsuario.cliente,
+            RolUsuario.colaborador,
+            RolUsuario.administrador,
+          ])
             SimpleDialogOption(
               onPressed: () => Navigator.of(context).pop(r),
-              child: Text(r == RolUsuario.cliente ? 'Cliente' : 'Colaborador'),
+              child: Text(_rolLabelEstatico(r)),
             ),
         ],
       ),
@@ -161,6 +165,192 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     await AdminService.quitarBloqueo(u.id!);
     _mostrarMensaje('Bloqueo de "${u.alias}" levantado');
     await _cargarDatos();
+  }
+
+  Future<void> _suspender(Usuario u) async {
+    final ok = await _confirmar(
+      'Suspender cuenta',
+      '¿Suspender la cuenta de "${u.alias}"? No podrá iniciar sesión '
+          'hasta que le quites la suspensión.',
+      textoBoton: 'Suspender',
+      colorBoton: AppColors.error,
+    );
+    if (!ok) return;
+    await AdminService.suspenderUsuario(u.id!);
+    _mostrarMensaje('Cuenta de "${u.alias}" suspendida');
+    await _cargarDatos();
+  }
+
+  Future<void> _verDetalle(Usuario u) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(u.alias),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FilaDetalle('Nombre', u.nombre),
+              _FilaDetalle('Edad', '${u.edad}'),
+              _FilaDetalle('Correo', u.correo),
+              _FilaDetalle('Rol', _rolLabelEstatico(u.rol)),
+              _FilaDetalle('Registrado', u.fechaRegistro),
+              _FilaDetalle('Verificación en dos pasos',
+                  u.totpHabilitado ? 'Activa' : 'Desactivada'),
+              _FilaDetalle(
+                  'Estado de la cuenta', u.estaBloqueado ? 'Bloqueada/suspendida' : 'Activa'),
+              if (u.ocupacion != null || u.localidadTrabajo != null)
+                _FilaDetalle('Perfil de colaborador',
+                    [u.ocupacion, u.localidadTrabajo].whereType<String>().join(' · ')),
+              if (u.bancoFicticio != null || u.numeroCuentaFicticia != null)
+                _FilaDetalle('Cuenta bancaria (ficticia)',
+                    [u.bancoFicticio, u.numeroCuentaFicticia].whereType<String>().join(' · ')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editarDatos(Usuario u) async {
+    final nombreCtrl = TextEditingController(text: u.nombre);
+    final edadCtrl = TextEditingController(text: '${u.edad}');
+    final correoCtrl = TextEditingController(text: u.correo);
+    String? error;
+
+    final guardar = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text('Editar datos de "${u.alias}"'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreCtrl,
+                  decoration: const InputDecoration(labelText: 'Nombre completo'),
+                ),
+                TextField(
+                  controller: edadCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Edad'),
+                ),
+                TextField(
+                  controller: correoCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Correo'),
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(error!,
+                        style: const TextStyle(color: AppColors.error, fontSize: 12.5)),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final edad = int.tryParse(edadCtrl.text.trim());
+                if (nombreCtrl.text.trim().isEmpty ||
+                    correoCtrl.text.trim().isEmpty ||
+                    edad == null) {
+                  setStateDialog(() => error = 'Completa todos los campos correctamente.');
+                  return;
+                }
+                final resultado = await AdminService.actualizarDatosUsuario(
+                  u.id!,
+                  nombre: nombreCtrl.text.trim(),
+                  edad: edad,
+                  correo: correoCtrl.text.trim(),
+                );
+                if (resultado != null) {
+                  setStateDialog(() => error = resultado);
+                  return;
+                }
+                if (context.mounted) Navigator.of(context).pop(true);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (guardar == true) await _cargarDatos();
+  }
+
+  Future<void> _resetearContrasena(Usuario u) async {
+    final contrasenaCtrl = TextEditingController();
+    String? error;
+
+    final hecho = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text('Restablecer contraseña de "${u.alias}"'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Úsalo solo como soporte, cuando la persona no puede '
+                'recuperarla por correo. Avísale la contraseña nueva por '
+                'otro canal seguro.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: contrasenaCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Contraseña nueva'),
+              ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(error!,
+                      style: const TextStyle(color: AppColors.error, fontSize: 12.5)),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (contrasenaCtrl.text.length < 6) {
+                  setStateDialog(() => error = 'Mínimo 6 caracteres.');
+                  return;
+                }
+                final resultado = await AdminService.resetearContrasenaUsuario(
+                    u.id!, contrasenaCtrl.text);
+                if (resultado != null) {
+                  setStateDialog(() => error = resultado);
+                  return;
+                }
+                if (context.mounted) Navigator.of(context).pop(true);
+              },
+              child: const Text('Restablecer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (hecho == true) _mostrarMensaje('Contraseña de "${u.alias}" restablecida');
   }
 
   Future<void> _eliminarSolicitud(Solicitud s) async {
@@ -252,6 +442,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           onCambiarRol: _cambiarRol,
                           onDesactivar2fa: _desactivar2fa,
                           onQuitarBloqueo: _quitarBloqueo,
+                          onSuspender: _suspender,
+                          onVerDetalle: _verDetalle,
+                          onEditarDatos: _editarDatos,
+                          onResetearContrasena: _resetearContrasena,
                         ),
                       ),
                     ],
@@ -332,6 +526,46 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+String _rolLabelEstatico(RolUsuario? rol) {
+  switch (rol) {
+    case RolUsuario.colaborador:
+      return 'Colaborador';
+    case RolUsuario.cliente:
+      return 'Cliente';
+    case RolUsuario.administrador:
+      return 'Administrador';
+    case null:
+      return 'Sin rol';
+  }
+}
+
+class _FilaDetalle extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  const _FilaDetalle(this.etiqueta, this.valor);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(etiqueta.toUpperCase(),
+              style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4)),
+          const SizedBox(height: 2),
+          Text(valor.isEmpty ? '—' : valor,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13.5)),
+        ],
       ),
     );
   }
@@ -433,6 +667,10 @@ class _ListaUsuarios extends StatelessWidget {
   final ValueChanged<Usuario> onCambiarRol;
   final ValueChanged<Usuario> onDesactivar2fa;
   final ValueChanged<Usuario> onQuitarBloqueo;
+  final ValueChanged<Usuario> onSuspender;
+  final ValueChanged<Usuario> onVerDetalle;
+  final ValueChanged<Usuario> onEditarDatos;
+  final ValueChanged<Usuario> onResetearContrasena;
 
   const _ListaUsuarios({
     required this.usuarios,
@@ -441,6 +679,10 @@ class _ListaUsuarios extends StatelessWidget {
     required this.onCambiarRol,
     required this.onDesactivar2fa,
     required this.onQuitarBloqueo,
+    required this.onSuspender,
+    required this.onVerDetalle,
+    required this.onEditarDatos,
+    required this.onResetearContrasena,
   });
 
   @override
@@ -481,7 +723,7 @@ class _ListaUsuarios extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _Badge(texto: _rolLabel(u.rol)),
+                  _Badge(texto: _rolLabelEstatico(u.rol)),
                   if (!esUnoMismo)
                     IconButton(
                       onPressed: () => onEliminar(u),
@@ -521,19 +763,32 @@ class _ListaUsuarios extends StatelessWidget {
                     style: const TextStyle(color: AppColors.error, fontSize: 12),
                   ),
                 ),
-              if (!esUnoMismo) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (u.rol == RolUsuario.cliente ||
-                        u.rol == RolUsuario.colaborador)
-                      _AccionMenor(
-                        icono: Icons.swap_horiz,
-                        texto: 'Cambiar rol',
-                        onTap: () => onCambiarRol(u),
-                      ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _AccionMenor(
+                    icono: Icons.visibility_outlined,
+                    texto: 'Ver detalle',
+                    onTap: () => onVerDetalle(u),
+                  ),
+                  _AccionMenor(
+                    icono: Icons.edit_outlined,
+                    texto: 'Editar datos',
+                    onTap: () => onEditarDatos(u),
+                  ),
+                  if (!esUnoMismo) ...[
+                    _AccionMenor(
+                      icono: Icons.swap_horiz,
+                      texto: 'Cambiar rol',
+                      onTap: () => onCambiarRol(u),
+                    ),
+                    _AccionMenor(
+                      icono: Icons.password_outlined,
+                      texto: 'Restablecer contraseña',
+                      onTap: () => onResetearContrasena(u),
+                    ),
                     if (u.totpHabilitado)
                       _AccionMenor(
                         icono: Icons.lock_open_outlined,
@@ -545,28 +800,21 @@ class _ListaUsuarios extends StatelessWidget {
                         icono: Icons.lock_clock_outlined,
                         texto: 'Quitar bloqueo',
                         onTap: () => onQuitarBloqueo(u),
+                      )
+                    else
+                      _AccionMenor(
+                        icono: Icons.block_outlined,
+                        texto: 'Suspender cuenta',
+                        onTap: () => onSuspender(u),
                       ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ],
           ),
         );
       },
     );
-  }
-
-  String _rolLabel(RolUsuario? rol) {
-    switch (rol) {
-      case RolUsuario.colaborador:
-        return 'Colaborador';
-      case RolUsuario.cliente:
-        return 'Cliente';
-      case RolUsuario.administrador:
-        return 'Admin';
-      case null:
-        return 'Sin rol';
-    }
   }
 }
 
