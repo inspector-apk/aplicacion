@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
@@ -241,6 +242,15 @@ app.post('/api/colaboradores/desconectar', requiereApiKey, (req, res) => {
 // Cliente.
 app.get('/api/colaboradores/cercanos', requiereApiKey, (req, res) => {
   res.json({ ok: true, colaboradores: ubicaciones.colaboradoresCercanos() });
+});
+
+// Panel de administrador para PC (gestión de solicitudes; los usuarios
+// siguen siendo 100% locales por celular, así que no aparecen aquí).
+// Es un solo archivo HTML estático con su propio JS — pide la misma
+// API_KEY del backend como "clave de administrador" para poder usar los
+// endpoints de arriba, no agrega autenticación nueva.
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
 app.get('/api/salud', (req, res) => res.json({ ok: true }));

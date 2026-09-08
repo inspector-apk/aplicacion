@@ -114,6 +114,15 @@ generan por ti en segundos si necesitas recompilar.
     - **Solicitudes**: buscador (por alias, localidad o descripción),
       chips para filtrar por estado, resumen de comisiones de la
       plataforma (10%, sigue ficticio) y **eliminar**.
+- **Panel de administrador para PC** (`backend/admin-panel.html`,
+  servido en `http://<tu-servidor>:12443/admin`): gestiona solo
+  **solicitudes** (buscar, filtrar por estado, ver comisiones,
+  eliminar) desde el navegador de un computador — pensado para no
+  depender del celular para esta parte. No incluye usuarios porque esos
+  siguen siendo 100% locales por dispositivo (no existen en el
+  servidor); esa gestión se queda en la app móvil como antes. Pide
+  entrar con la misma `API_KEY` del backend, no agrega autenticación
+  nueva. Ver `backend/README.md` para más detalle.
 
 ## Cuenta de administrador
 

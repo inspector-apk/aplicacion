@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inspector — Panel de administrador</title>
+<style>
+  :root {
+    --bg: #000000;
+    --surface: #121212;
+    --surface-variant: #1c1c1e;
+    --border: #2e2e30;
+    --accent: #ffd700;
+    --accent-dim: #c9a900;
+    --text-primary: #f5f5f5;
+    --text-secondary: #a0a0a3;
+    --text-muted: #6e6e72;
+    --success: #39d98a;
+    --error: #ff5c5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  a { color: var(--accent); }
+
+  /* ---- Aviso de pantalla pequeña (pensado para PC, no celular) ---- */
+  #avisoMovil {
+    position: fixed; inset: 0; z-index: 50;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+  }
+  #avisoMovil.oculto { display: none; }
+  #avisoMovil .caja {
+    max-width: 380px; padding: 28px;
+    background: var(--surface-variant);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  #avisoMovil h2 { color: var(--accent); margin: 0 0 10px; font-size: 18px; }
+  #avisoMovil p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+  #avisoMovil button {
+    margin-top: 18px; width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: transparent; color: var(--text-muted); font-size: 13px; cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  /* ---- Login ---- */
+  #login {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  #login .caja {
+    width: 100%; max-width: 360px; padding: 32px;
+    background: var(--surface-variant); border: 1px solid var(--border); border-radius: 18px;
+  }
+  #login h1 { color: var(--accent); font-size: 20px; margin: 0 0 6px; letter-spacing: 1px; }
+  #login p { color: var(--text-secondary); font-size: 13px; margin: 0 0 20px; }
+  input {
+    width: 100%; padding: 12px 14px; margin-bottom: 12px;
+    background: var(--bg); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  button.principal {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: var(--accent); color: #000; font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  button.principal:disabled { opacity: 0.5; cursor: default; }
+  .error-texto { color: var(--error); font-size: 12.5px; margin: 4px 0 12px; min-height: 16px; }
+
+  /* ---- Panel principal ---- */
+  #panel { display: none; max-width: 1200px; margin: 0 auto; padding: 24px; }
+  header.top {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
+  }
+  header.top h1 { font-size: 18px; letter-spacing: 2px; color: var(--text-primary); margin: 0; }
+  header.top .spacer { flex: 1; }
+  button.icono {
+    background: var(--surface-variant); border: 1px solid var(--border); color: var(--text-secondary);
+    border-radius: 10px; padding: 9px 14px; cursor: pointer; font-size: 13px;
+  }
+  button.icono:hover { border-color: var(--accent); color: var(--accent); }
+
+  .resumen {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border-radius: 16px; padding: 18px 22px; margin-bottom: 20px;
+    display: flex; gap: 40px; flex-wrap: wrap;
+  }
+  .resumen .item .valor { font-size: 24px; font-weight: 800; color: #000; }
+  .resumen .item .etiqueta { font-size: 12px; color: rgba(0,0,0,.65); font-weight: 600; }
+
+  .controles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .controles input[type="text"] { max-width: 320px; margin-bottom: 0; }
+  .chip {
+    padding: 7px 13px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface-variant); color: var(--text-secondary); font-size: 12.5px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .chip.activo { border-color: var(--accent); color: var(--accent); background: rgba(255,215,0,.12); }
+
+  table { width: 100%; border-collapse: collapse; background: var(--surface-variant); border-radius: 14px; overflow: hidden; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--text-muted); padding: 12px 14px; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,.02); cursor: pointer; }
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 8px; font-size: 10.5px;
+    font-weight: 700; letter-spacing: .4px; background: rgba(255,215,0,.12); color: var(--accent);
+    text-transform: uppercase;
+  }
+  .muted { color: var(--text-muted); font-size: 11.5px; }
+  .btn-eliminar {
+    background: none; border: 1px solid var(--error); color: var(--error);
+    border-radius: 8px; padding: 6px 10px; font-size: 11.5px; cursor: pointer;
+  }
+  .btn-eliminar:hover { background: rgba(255,92,92,.1); }
+  .vacio { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+  /* ---- Modal de detalle ---- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none;
+    align-items: center; justify-content: center; z-index: 40; padding: 20px;
+  }
+  .overlay.visible { display: flex; }
+  .modal {
+    background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 520px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px;
+  }
+  .modal h3 { margin: 0 0 14px; color: var(--accent); font-size: 16px; }
+  .modal .fila { margin-bottom: 10px; font-size: 13px; }
+  .modal .fila b { color: var(--text-secondary); font-weight: 600; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+  .modal img { max-width: 100%; border-radius: 10px; margin-top: 6px; }
+  .modal button.cerrar {
+    margin-top: 16px; width: 100%; padding: 11px; border-radius: 10px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+  <div id="avisoMovil" class="oculto">
+    <div class="caja">
+      <h2>Pensado para computador</h2>
+      <p>Este panel de administrador está diseñado para verse desde una pantalla de computador, no desde un celular. La app móvil de Inspector sigue teniendo su propio panel de admin para gestionar usuarios.</p>
+      <button onclick="document.getElementById('avisoMovil').classList.add('oculto')">Continuar de todas formas</button>
+    </div>
+  </div>
+
+  <div id="login">
+    <div class="caja">
+      <h1>INSPECTOR</h1>
+      <p>Panel de administrador (solicitudes) — solo para computador.</p>
+      <input id="claveInput" type="password" placeholder="Clave de administrador" autofocus>
+      <div class="error-texto" id="loginError"></div>
+      <button class="principal" onclick="iniciarSesion()">ENTRAR</button>
+    </div>
+  </div>
+
+  <div id="panel">
+    <header class="top">
+      <h1>PANEL DE ADMINISTRADOR</h1>
+      <div class="spacer"></div>
+      <button class="icono" onclick="cargarSolicitudes()">↻ Actualizar</button>
+      <button class="icono" onclick="cerrarSesion()">Cerrar sesión</button>
+    </header>
+
+    <div class="resumen">
+      <div class="item">
+        <div class="valor" id="resumenComision">$0</div>
+        <div class="etiqueta">Comisiones de la plataforma (simuladas, 10%)</div>
+      </div>
+      <div class="item">
+        <div class="valor" id="resumenCompletadas">0</div>
+        <div class="etiqueta">Solicitudes completadas</div>
+      </div>
+      <div class="item">
+        <div class="valor" id="resumenTotal">0</div>
+        <div class="etiqueta">Solicitudes totales</div>
+      </div>
+    </div>
+
+    <div class="controles">
+      <input id="busqueda" type="text" placeholder="Buscar por alias, localidad o descripción" oninput="renderizar()">
+      <div class="chip activo" data-estado="" onclick="filtrarEstado(this)">Todas</div>
+      <div class="chip" data-estado="pendiente" onclick="filtrarEstado(this)">Buscando colaborador</div>
+      <div class="chip" data-estado="aceptada" onclick="filtrarEstado(this)">Atendiendo</div>
+      <div class="chip" data-estado="completada" onclick="filtrarEstado(this)">Completada</div>
+      <div class="chip" data-estado="cancelada" onclick="filtrarEstado(this)">Cancelada</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Solicitud</th>
+          <th>Cliente / Colaborador</th>
+          <th>Localidad</th>
+          <th>Valor</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <div class="vacio" id="vacio" style="display:none;">Sin solicitudes que coincidan</div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="if(event.target===this) cerrarModal()">
+    <div class="modal" id="modalContenido"></div>
+  </div>
+
+<script>
+  const ESTADOS = {
+    pendiente: 'Buscando colaborador',
+    aceptada: 'Colaborador atendiendo tu solicitud',
+    completada: 'Completada',
+    cancelada: 'Cancelada',
+  };
+  const CATEGORIAS = { personal: 'Personal', comercial: 'Comercial', industrial: 'Industrial' };
+  const URGENCIAS = { unaHora: 'En 1 hora', cincoHoras: 'En 5 horas', dosDias: 'En 2 días' };
+  const TIPOS = { texto: 'Texto', imagen: 'Imagen', audio: 'Audio', video: 'Video' };
+
+  let claveAdmin = sessionStorage.getItem('inspector_admin_clave') || '';
+  let solicitudes = [];
+  let filtroEstado = '';
+
+  if (window.innerWidth < 900) {
+    document.getElementById('avisoMovil').classList.remove('oculto');
+  }
+
+  if (claveAdmin) mostrarPanel();
+
+  function formatearPesos(v) {
+    return '$' + Number(v || 0).toLocaleString('es-CO');
+  }
+
+  function formatearFecha(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function apiFetch(ruta, opciones) {
+    const resp = await fetch(ruta, {
+      ...opciones,
+      headers: { 'Content-Type': 'application/json', 'x-api-key': claveAdmin, ...(opciones && opciones.headers) },
+    });
+    return resp;
+  }
+
+  async function iniciarSesion() {
+    const clave = document.getElementById('claveInput').value.trim();
+    const errorEl = document.getElementById('loginError');
+    errorEl.textContent = '';
+    if (!clave) { errorEl.textContent = 'Escribe la clave.'; return; }
+    claveAdmin = clave;
+    try {
+      const resp = await fetch('/api/solicitudes/todas', { headers: { 'x-api-key': claveAdmin } });
+      if (resp.status === 401) { errorEl.textContent = 'Clave incorrecta.'; claveAdmin = ''; return; }
+      if (!resp.ok) { errorEl.textContent = 'No se pudo conectar con el servidor.'; return; }
+      sessionStorage.setItem('inspector_admin_clave', claveAdmin);
+      mostrarPanel();
+    } catch (e) {
+      errorEl.textContent = 'No se pudo conectar con el servidor.';
+    }
+  }
+
+  function cerrarSesion() {
+    sessionStorage.removeItem('inspector_admin_clave');
+    claveAdmin = '';
+    document.getElementById('panel').style.display = 'none';
+    document.getElementById('login').style.display = 'flex';
+  }
+
+  function mostrarPanel() {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    cargarSolicitudes();
+  }
+
+  async function cargarSolicitudes() {
+    try {
+      const resp = await apiFetch('/api/solicitudes/todas');
+      const cuerpo = await resp.json();
+      if (!cuerpo.ok) throw new Error(cuerpo.error || 'error');
+      solicitudes = cuerpo.solicitudes || [];
+      renderizar();
+    } catch (e) {
+      alert('No se pudieron cargar las solicitudes: ' + e.message);
+    }
+  }
+
+  function filtrarEstado(el) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+    el.classList.add('activo');
+    filtroEstado = el.dataset.estado;
+    renderizar();
+  }
+
+  function renderizar() {
+    const texto = document.getElementById('busqueda').value.trim().toLowerCase();
+    const filtradas = solicitudes.filter(s => {
+      if (filtroEstado && s.estado !== filtroEstado) return false;
+      if (!texto) return true;
+      return (s.cliente_alias || '').toLowerCase().includes(texto)
+        || (s.colaborador_alias || '').toLowerCase().includes(texto)
+        || (s.localidad || '').toLowerCase().includes(texto)
+        || (s.descripcion || '').toLowerCase().includes(texto);
+    });
+
+    const completadas = solicitudes.filter(s => s.estado === 'completada');
+    const comisionTotal = completadas.reduce((suma, s) => suma + Math.round((s.valor_total || 0) * 0.10), 0);
+    document.getElementById('resumenComision').textContent = formatearPesos(comisionTotal);
+    document.getElementById('resumenCompletadas').textContent = completadas.length;
+    document.getElementById('resumenTotal').textContent = solicitudes.length;
+
+    const filas = document.getElementById('filas');
+    const vacio = document.getElementById('vacio');
+    filas.innerHTML = '';
+    vacio.style.display = filtradas.length ? 'none' : 'block';
+
+    filtradas.forEach(s => {
+      const tipos = (Array.isArray(s.tipos) ? s.tipos : []).map(t => TIPOS[t] || t).join(' + ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div>${tipos || '—'}</div>
+          <div class="muted">${CATEGORIAS[s.categoria] || s.categoria} · ${URGENCIAS[s.urgencia] || s.urgencia || ''}</div>
+        </td>
+        <td>
+          <div>${s.cliente_alias || ''}</div>
+          <div class="muted">${s.colaborador_alias ? 'Colaborador: ' + s.colaborador_alias : 'Sin colaborador aún'}</div>
+        </td>
+        <td>${s.localidad || ''}</td>
+        <td>${formatearPesos(s.valor_total)}</td>
+        <td><span class="badge">${ESTADOS[s.estado] || s.estado}</span></td>
+        <td class="muted">${formatearFecha(s.fecha_creacion)}</td>
+        <td><button class="btn-eliminar" onclick="event.stopPropagation(); eliminarSolicitud(${s.id})">Eliminar</button></td>
+      `;
+      tr.onclick = () => mostrarDetalle(s);
+      filas.appendChild(tr);
+    });
+  }
+
+  function mostrarDetalle(s) {
+    const tipos = (Array.isArray(s.tipos) ? s.tipos : []).map(t => TIPOS[t] || t).join(' + ');
+    const modal = document.getElementById('modalContenido');
+    modal.innerHTML = `
+      <h3>Solicitud #${s.id}</h3>
+      <div class="fila"><b>Tipos pedidos</b>${tipos || '—'}</div>
+      <div class="fila"><b>Categoría / Urgencia</b>${CATEGORIAS[s.categoria] || s.categoria} · ${URGENCIAS[s.urgencia] || s.urgencia || ''}</div>
+      <div class="fila"><b>Descripción</b>${(s.descripcion || '').replace(/</g, '&lt;')}</div>
+      <div class="fila"><b>Localidad / Dirección</b>${s.localidad || ''}${s.direccion ? ' · ' + s.direccion : ''}</div>
+      <div class="fila"><b>Cliente</b>${s.cliente_alias || ''}</div>
+      <div class="fila"><b>Colaborador</b>${s.colaborador_alias || 'Sin asignar'}</div>
+      <div class="fila"><b>Estado</b>${ESTADOS[s.estado] || s.estado}</div>
+      <div class="fila"><b>Valor de referencia (ficticio)</b>${formatearPesos(s.valor_total)}</div>
+      ${s.metodo_pago ? `<div class="fila"><b>Pago (simulado)</b>${s.metodo_pago} · Ref: ${s.referencia_pago || ''}</div>` : ''}
+      <div class="fila"><b>Solicitado</b>${formatearFecha(s.fecha_creacion)}</div>
+      ${s.respuesta_fecha ? `<div class="fila"><b>Respondido</b>${formatearFecha(s.respuesta_fecha)}</div>` : ''}
+      ${s.imagen_referencia_base64 ? `<div class="fila"><b>Imagen de referencia del cliente</b><img src="data:image/jpeg;base64,${s.imagen_referencia_base64}"></div>` : ''}
+      <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
+    `;
+    document.getElementById('overlay').classList.add('visible');
+  }
+
+  function cerrarModal() {
+    document.getElementById('overlay').classList.remove('visible');
+  }
+
+  async function eliminarSolicitud(id) {
+    if (!confirm('¿Eliminar esta solicitud? No se puede deshacer.')) return;
+    try {
+      const resp = await apiFetch('/api/solicitudes/' + id, { method: 'DELETE' });
+      const cuerpo = await resp.json();
+      if (!cuerpo.ok) throw new Error(cuerpo.error || 'error');
+      await cargarSolicitudes();
+    } catch (e) {
+      alert('No se pudo eliminar: ' + e.message);
+    }
+  }
+
+  document.getElementById('claveInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') iniciarSesion();
+  });
+</script>
+</body>
+</html>

@@ -260,6 +260,32 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.desktop_windows_outlined,
+                                  size: 15, color: AppColors.textMuted),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'También puedes ver y gestionar solicitudes desde un computador en /admin',
+                                  style: TextStyle(
+                                      color: AppColors.textMuted, fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                         child: TextField(
                           controller: _busquedaSolicitudesCtrl,
                           style: const TextStyle(color: AppColors.textPrimary),

@@ -91,6 +91,27 @@ static const String apiKey = 'la-misma-clave-que-pusiste-en-.env';
 
 Vuelve a compilar el APK/IPA para que tome estos valores.
 
+## Panel de administrador para PC
+
+Además del panel dentro de la app móvil (que gestiona usuarios, 100%
+locales por celular), hay un panel web pensado para verse **desde un
+computador**, en:
+
+```
+http://appinspector.servialco.com:12443/admin
+```
+
+Gestiona **solicitudes** (buscar, filtrar por estado, ver el resumen de
+comisiones y eliminar) — no usuarios, porque esos no viven en este
+servidor. Es un solo archivo estático (`backend/admin-panel.html`, sin
+dependencias ni build) servido por el mismo backend en la ruta `/admin`.
+
+Para entrar, pide la misma `API_KEY` del `.env` como "clave de
+administrador" — no agrega ningún sistema de autenticación nuevo, solo
+usa el mismo header `x-api-key` que ya protege el resto de la API. La
+clave se guarda en el `sessionStorage` del navegador (se borra sola al
+cerrar la pestaña o con "Cerrar sesión"), nunca en el propio archivo.
+
 ## Endpoints
 
 Todos requieren el header `x-api-key` (excepto `/api/salud`). El
@@ -113,6 +134,7 @@ propio límite de tamaño de body, revisa que también lo permita
 - `POST /api/colaboradores/ubicacion` — el colaborador envía su posición mientras está "disponible" (`colaboradorAlias, latitud, longitud`), para mostrarlo en el mapa del cliente
 - `POST /api/colaboradores/desconectar` — el colaborador avisa que ya no está disponible (`colaboradorAlias`)
 - `GET /api/colaboradores/cercanos` — posiciones aproximadas y difuminadas de los colaboradores disponibles ahora mismo
+- `GET /admin` — panel de administrador web para PC (ver arriba); no requiere `x-api-key` para cargar la página, la pide dentro de la propia página para usar la API
 
 ### Sobre la privacidad de las respuestas
 
