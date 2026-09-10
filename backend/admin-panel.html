@@ -490,8 +490,8 @@
       <div class="fila"><b>Cliente</b>${escapar(s.cliente_alias)}</div>
       <div class="fila"><b>Colaborador</b>${escapar(s.colaborador_alias) || 'Sin asignar'}</div>
       <div class="fila"><b>Estado</b>${escapar(ESTADOS[s.estado] || s.estado)}</div>
-      <div class="fila"><b>Valor cobrado</b>${formatearPesos(s.valor_total)}</div>
-      ${s.metodo_pago ? `<div class="fila"><b>Pago</b>${escapar(s.metodo_pago)} · Ref: ${escapar(s.referencia_pago)}</div>` : ''}
+      <div class="fila"><b>Valor de referencia (ficticio)</b>${formatearPesos(s.valor_total)}</div>
+      ${s.metodo_pago ? `<div class="fila"><b>Pago (simulado)</b>${escapar(s.metodo_pago)} · Ref: ${escapar(s.referencia_pago)}</div>` : ''}
       <div class="fila"><b>Solicitado</b>${formatearFecha(s.fecha_creacion)}</div>
       ${s.respuesta_fecha ? `<div class="fila"><b>Respondido</b>${formatearFecha(s.respuesta_fecha)}</div>` : ''}
       ${s.imagen_referencia_base64 ? `<div class="fila"><b>Imagen de referencia del cliente</b><img src="data:image/jpeg;base64,${s.imagen_referencia_base64}"></div>` : ''}

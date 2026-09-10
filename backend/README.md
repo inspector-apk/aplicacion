@@ -95,53 +95,6 @@ static const String apiKey = 'la-misma-clave-que-pusiste-en-.env';
 
 Vuelve a compilar el APK/IPA para que tome estos valores.
 
-## Pagos por PSE (Wompi)
-
-A diferencia del resto de la app (que es ficticio), el pago con PSE es
-**real** y se procesa con [Wompi](https://wompi.co) (Bancolombia). Para
-probarlo no necesitas ningún trámite de negocio:
-
-1. Crea una cuenta gratis en <https://comercios.wompi.co>.
-2. En el panel, activa el interruptor **Sandbox** (arriba a la derecha)
-   — en ese modo todo el dinero es simulado, incluyendo el banco al que
-   te manda PSE (hay un banco de pruebas que siempre aprueba o rechaza,
-   según elijas).
-3. Ve a **Desarrolladores** y copia la **llave pública** y la **llave
-   privada** de Sandbox (empiezan con `pub_test_` y `prv_test_`).
-4. Pégalas en el `.env` del backend:
-   ```
-   WOMPI_PUBLIC_KEY=pub_test_...
-   WOMPI_PRIVATE_KEY=prv_test_...
-   ```
-5. Reinicia el backend (`sudo systemctl restart inspector-verificacion`).
-
-Cuando quieras cobrar de verdad, en el mismo panel de Wompi pides que
-activen tu cuenta para **Producción** (ahí sí piden NIT/cédula y cuenta
-bancaria del negocio — eso es 100% tuyo, fuera del código) y cambias en
-el `.env`:
-```
-WOMPI_BASE_URL=https://production.wompi.co/v1
-WOMPI_PUBLIC_KEY=pub_prod_...
-WOMPI_PRIVATE_KEY=prv_prod_...
-```
-
-**Sobre la confirmación del pago:** Wompi puede avisar por dos vías — un
-webhook (necesita HTTPS, que este servidor todavía no tiene configurado;
-ver la guía general para nginx + Let's Encrypt) o que la app pregunte
-directamente (`GET /api/pagos/estado/:referencia`, que a su vez le
-pregunta a Wompi si sigue sin saberlo). La app ya usa la segunda vía por
-polling, así que **funciona sin necesidad de HTTPS**; el webhook queda
-listo (`POST /api/pagos/webhook-wompi`) para cuando actives HTTPS y lo
-configures en **Desarrolladores > Webhooks** del panel de Wompi (más
-rápido que el polling, pero no es obligatorio).
-
-### Endpoints de pagos
-
-- `GET /api/pagos/bancos-pse` — lista de bancos habilitados, para el selector en la app
-- `POST /api/pagos/pse` (`clienteAlias, montoCentavos, correo, codigoBanco, tipoPersona ("natural"/"juridica"), tipoDocumento ("CC"/"CE"/"NIT"/"PP"...), numeroDocumento, redirectUrl, descripcion`) — crea la transacción; responde con `referencia` (propia) y `urlBanco` (a donde mandar al cliente)
-- `GET /api/pagos/estado/:referencia` — estado actual (`PENDING`/`APPROVED`/`DECLINED`/`VOIDED`/`ERROR`)
-- `POST /api/pagos/webhook-wompi` — recibe eventos de Wompi (verifica la firma con `WOMPI_EVENTS_SECRET`); no requiere `x-api-key` porque lo llama Wompi, no la app
-
 ## Panel de administrador para PC
 
 Panel web completo, pensado para verse **desde un computador**, en:

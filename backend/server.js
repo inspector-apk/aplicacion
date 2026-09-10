@@ -5,8 +5,6 @@ const cors = require('cors');
 const db = require('./db');
 const ubicaciones = require('./ubicaciones');
 const usuarios = require('./usuarios');
-const wompi = require('./wompi');
-const pagos = require('./pagos');
 
 const app = express();
 app.use(cors());
@@ -53,7 +51,7 @@ app.post('/api/solicitudes', requiereApiKey, (req, res) => {
     return res.status(400).json({ ok: false, error: 'descripcion, localidad y direccion son requeridos' });
   }
   if (!referenciaPago || !metodoPago) {
-    return res.status(400).json({ ok: false, error: 'Falta completar el pago antes de enviar' });
+    return res.status(400).json({ ok: false, error: 'Falta completar el pago (ficticio) antes de enviar' });
   }
   if (typeof latitud !== 'number' || typeof longitud !== 'number') {
     return res.status(400).json({ ok: false, error: 'latitud/longitud inválidas' });
@@ -457,123 +455,12 @@ app.delete('/api/usuarios/:id', requiereApiKey, (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------------------------------------------------------------------
-// Pagos por PSE (Wompi) — pasarela real, a diferencia del resto de la
-// app que es ficticio. En modo sandbox por defecto: ver
-// backend/README.md para cómo obtener llaves de prueba gratis.
-// ---------------------------------------------------------------------
-
-app.get('/api/pagos/bancos-pse', requiereApiKey, async (req, res) => {
-  try {
-    res.json({ ok: true, bancos: await wompi.listarBancosPSE() });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
-  }
-});
-
-// Crea la transacción PSE y devuelve la URL a la que hay que mandar al
-// cliente para que autentique el pago con su banco. `montoCentavos` es
-// el valor en centavos de peso (multiplica el valor en pesos por 100).
-app.post('/api/pagos/pse', requiereApiKey, async (req, res) => {
-  const {
-    clienteAlias, montoCentavos, correo, codigoBanco,
-    tipoPersona, tipoDocumento, numeroDocumento, redirectUrl, descripcion,
-  } = req.body;
-
-  if (!clienteAlias || typeof montoCentavos !== 'number' || montoCentavos <= 0) {
-    return res.status(400).json({ ok: false, error: 'clienteAlias y montoCentavos son requeridos' });
-  }
-  if (!correo || !codigoBanco || !tipoDocumento || !numeroDocumento || !redirectUrl) {
-    return res.status(400).json({ ok: false, error: 'Faltan datos del pago (correo, banco, documento o redirectUrl)' });
-  }
-
-  const referencia = pagos.crear({ clienteAlias, montoCentavos, banco: codigoBanco, correo });
-  try {
-    const { wompiId, estado, urlBanco } = await wompi.crearTransaccionPSE({
-      referencia, montoCentavos, correo, codigoBanco, tipoPersona,
-      tipoDocumento, numeroDocumento, redirectUrl, descripcion,
-    });
-    pagos.asociarWompiId(referencia, wompiId);
-    pagos.actualizarEstado(referencia, estado);
-    res.status(201).json({ ok: true, referencia, urlBanco });
-  } catch (err) {
-    pagos.actualizarEstado(referencia, 'ERROR');
-    const codigo = err instanceof wompi.ErrorWompi ? 502 : 500;
-    res.status(codigo).json({ ok: false, error: err.message });
-  }
-});
-
-// La app hace polling de esto mientras el cliente está en el banco
-// autenticando el pago. Si sigue PENDING, de paso consulta a Wompi
-// directamente (no depende únicamente del webhook, que necesita HTTPS
-// configurado en el panel de Wompi para funcionar).
-app.get('/api/pagos/estado/:referencia', requiereApiKey, async (req, res) => {
-  const pago = pagos.obtenerPorReferencia(req.params.referencia);
-  if (!pago) return res.status(404).json({ ok: false, error: 'Pago no encontrado' });
-
-  if (pago.estado === 'PENDING' && pago.wompi_id) {
-    try {
-      const transaccion = await wompi.obtenerTransaccion(pago.wompi_id);
-      if (transaccion?.status && transaccion.status !== pago.estado) {
-        pagos.actualizarEstado(pago.referencia, transaccion.status);
-        pago.estado = transaccion.status;
-      }
-    } catch (_) {
-      // Si Wompi no responde en este momento, se devuelve el último
-      // estado conocido; la app sigue reintentando.
-    }
-  }
-  res.json({ ok: true, estado: pago.estado });
-});
-
-// Wompi notifica aquí cuando cambia el estado de una transacción.
-// Requiere configurar esta URL en el panel de Wompi (Desarrolladores >
-// Webhooks) — necesita HTTPS, así que solo funciona una vez el backend
-// tenga un certificado real (ver la guía de nginx + Let's Encrypt).
-// Mientras tanto, GET /api/pagos/estado/:referencia (arriba) cubre lo
-// mismo por polling directo a Wompi.
-app.post('/api/pagos/webhook-wompi', (req, res) => {
-  const { event, data, signature, timestamp } = req.body || {};
-  if (event !== 'transaction.updated' || !data?.transaction) {
-    return res.status(200).json({ ok: true }); // se ignora, pero se responde 200
-  }
-  if (!wompi.verificarFirmaWebhook({ data, signature, timestamp })) {
-    return res.status(401).json({ ok: false, error: 'Firma inválida' });
-  }
-  const { id, status } = data.transaction;
-  pagos.actualizarEstadoPorWompiId(id, status);
-  res.json({ ok: true });
-});
-
 // Panel de administrador para PC: usuarios y solicitudes. Es un solo
 // archivo HTML estático con su propio JS — pide la misma API_KEY del
 // backend como "clave de administrador" para poder usar los endpoints
 // de arriba, no agrega autenticación nueva.
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-panel.html'));
-});
-
-// A esta página vuelve el navegador después de que el cliente autentica
-// el pago PSE con su banco (Wompi la abre con `?id=...` en la URL). La
-// app no depende de esto para saber si el pago quedó aprobado (usa
-// polling a /api/pagos/estado), es solo para que la persona sepa que ya
-// puede cerrar el navegador y volver a Inspector.
-app.get('/pago-completado', (req, res) => {
-  res.send(`<!doctype html><html lang="es"><head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pago procesado — Inspector</title>
-    <style>
-      body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-        background:#000; color:#f5f5f5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; text-align:center; padding:24px; }
-      .caja { max-width:360px; }
-      h1 { color:#ffd700; font-size:20px; margin:0 0 10px; }
-      p { color:#a0a0a3; font-size:14px; line-height:1.5; }
-    </style></head><body>
-    <div class="caja">
-      <h1>Pago procesado</h1>
-      <p>Ya puedes cerrar esta ventana y volver a la app Inspector — ahí verás la confirmación.</p>
-    </div>
-    </body></html>`);
 });
 
 app.get('/api/salud', (req, res) => res.json({ ok: true }));
