@@ -23,8 +23,11 @@ const int _kUmbralConfirmacionIA = 60;
 
 /// Duración máxima de audio/video que se puede adjuntar en una
 /// respuesta, para no generar archivos demasiado pesados (viajan en
-/// base64 dentro del cuerpo de la petición).
-const Duration _kDuracionMaximaMedia = Duration(minutes: 2);
+/// base64 dentro del cuerpo de la petición). Se bajó de 2 minutos a 1
+/// porque los videos más largos, sumados a la ruta de red hacia el
+/// servidor, a veces hacían que la respuesta se completara del lado
+/// del servidor pero la app no recibiera la confirmación a tiempo.
+const Duration _kDuracionMaximaMedia = Duration(minutes: 1);
 
 /// Pantalla donde el Colaborador responde una solicitud que aceptó: uno
 /// o varios de texto, foto, audio o video, según lo que haya pedido la
