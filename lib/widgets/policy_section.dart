@@ -1,26 +1,21 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
-
-const String kPoliticaTratamientoDatos =
-    'Inspector recopila y almacena localmente en tu dispositivo la '
-    'información que proporcionas durante el registro (nombre, edad, '
-    'correo y alias). Esta información NO es enviada a servidores '
-    'externos. Es utilizada únicamente para identificarte dentro de la '
-    'aplicación. Puedes solicitar la eliminación de tus datos en '
-    'cualquier momento desde la configuración de la app.';
+import '../core/documentos_legales.dart';
 
 const String kDeclaracionMayoriaEdad = 'Declaro que soy mayor de 18 años.';
 
-/// Sección de políticas del formulario de registro: los dos checkboxes
-/// obligatorios. El primero incluye un link para leer la política
-/// completa en una pantalla aparte.
+/// Sección legal del registro: lista los documentos (términos, políticas
+/// de uso, tratamiento de datos y normatividad) para que el usuario los
+/// abra, y los dos checkboxes obligatorios para poder crear la cuenta.
 class PolicySection extends StatelessWidget {
   final bool aceptoPoliticas;
   final bool declaraMayorEdad;
   final ValueChanged<bool> onAceptoPoliticasChanged;
   final ValueChanged<bool> onDeclaraMayorEdadChanged;
-  final VoidCallback onVerPolitica;
+
+  /// Recibe la posición del documento en [kDocumentosLegales].
+  final ValueChanged<int> onVerDocumento;
 
   const PolicySection({
     super.key,
@@ -28,8 +23,20 @@ class PolicySection extends StatelessWidget {
     required this.declaraMayorEdad,
     required this.onAceptoPoliticasChanged,
     required this.onDeclaraMayorEdadChanged,
-    required this.onVerPolitica,
+    required this.onVerDocumento,
   });
+
+  TextSpan _link(String texto, int indice) {
+    return TextSpan(
+      text: texto,
+      style: const TextStyle(
+        color: AppColors.accentText,
+        decoration: TextDecoration.underline,
+        fontWeight: FontWeight.w600,
+      ),
+      recognizer: TapGestureRecognizer()..onTap = () => onVerDocumento(indice),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +49,54 @@ class PolicySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sin InkWell envolvente: el texto incluye un link tapable
-          // propio (la política), así que solo el checkbox alterna el
-          // valor para no competir por el mismo gesto con el link.
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              'Términos, políticas y normatividad',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'Léelos antes de crear tu cuenta. Toca cada uno para abrirlo.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ),
+          for (var i = 0; i < kDocumentosLegales.length; i++)
+            InkWell(
+              onTap: () => onVerDocumento(i),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(kDocumentosLegales[i].icono,
+                        color: AppColors.accentText, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        kDocumentosLegales[i].titulo,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right,
+                        color: AppColors.textMuted, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          const Divider(height: 1, color: AppColors.border),
+          // Sin InkWell envolvente: el texto incluye links tapables
+          // propios, así que solo el checkbox alterna el valor para no
+          // competir por el mismo gesto con los links.
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 16, 4),
             child: Row(
@@ -66,17 +118,15 @@ class PolicySection extends StatelessWidget {
                           height: 1.4,
                         ),
                         children: [
-                          const TextSpan(text: 'He leído y acepto la '),
-                          TextSpan(
-                            text: 'Política de Tratamiento de Datos',
-                            style: const TextStyle(
-                              color: AppColors.accent,
-                              decoration: TextDecoration.underline,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = onVerPolitica,
-                          ),
+                          const TextSpan(text: 'He leído y acepto los '),
+                          _link('Términos y condiciones', 0),
+                          const TextSpan(text: ', las '),
+                          _link('Políticas de uso', 1),
+                          const TextSpan(text: ' y el '),
+                          _link('Tratamiento de datos personales', 2),
+                          const TextSpan(text: ', conforme a la '),
+                          _link('normatividad aplicable', 3),
+                          const TextSpan(text: '.'),
                         ],
                       ),
                     ),

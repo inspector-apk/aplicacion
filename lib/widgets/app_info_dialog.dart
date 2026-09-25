@@ -15,7 +15,7 @@ Future<void> mostrarInfoDeLaApp(BuildContext context) {
           children: [
             const Row(
               children: [
-                Icon(Icons.info_outline, color: AppColors.accent, size: 22),
+                Icon(Icons.info_outline, color: AppColors.accentText, size: 22),
                 SizedBox(width: 8),
                 Text(
                   '¿Qué es Inspector?',
@@ -65,7 +65,7 @@ Future<void> mostrarInfoDeLaApp(BuildContext context) {
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.onAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -94,7 +94,7 @@ class _PuntoInfo extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icono, color: AppColors.accent, size: 18),
+        Icon(icono, color: AppColors.accentText, size: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

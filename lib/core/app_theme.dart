@@ -21,7 +21,7 @@ class AppTheme {
       textTheme: textTheme,
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.accent,
-        secondary: AppColors.accent,
+        secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.error,
       ),
@@ -74,7 +74,7 @@ class AppTheme {
           }
           return Colors.transparent;
         }),
-        checkColor: const WidgetStatePropertyAll(Colors.black),
+        checkColor: const WidgetStatePropertyAll(Colors.white),
         side: const BorderSide(color: AppColors.textSecondary, width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),

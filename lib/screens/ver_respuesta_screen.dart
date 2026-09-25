@@ -155,12 +155,12 @@ class _VerRespuestaScreenState extends State<VerRespuestaScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
                 Icon(Icons.visibility_off_outlined,
-                    color: AppColors.accent, size: 16),
+                    color: AppColors.accentText, size: 16),
                 SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     'Solo puedes ver esto una vez. Al salir, desaparece.',
-                    style: TextStyle(color: AppColors.accent, fontSize: 12),
+                    style: TextStyle(color: AppColors.accentText, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -286,7 +286,7 @@ class _ReproductorAudioState extends State<_ReproductorAudio> {
               _reproduciendo
                   ? Icons.pause_circle_filled
                   : Icons.play_circle_fill,
-              color: AppColors.accent,
+              color: AppColors.accentText,
               size: 44,
             ),
           ),

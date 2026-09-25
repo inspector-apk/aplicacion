@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/app_routes.dart';
 import '../core/role_navigation.dart';
-import '../models/usuario.dart';
 import '../services/auth_service.dart';
 import '../services/session_service.dart';
 import '../widgets/app_buttons.dart';
 import 'forgot_password_screen.dart';
 import 'role_selection_screen.dart';
-import 'two_factor_setup_screen.dart';
-import 'two_factor_verify_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,32 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      if (usuario.totpHabilitado) {
-        // La sesión se inicia dentro de TwoFactorVerifyScreen, solo
-        // después de validar el código de 6 dígitos.
+      SessionService.instance.iniciarSesion(usuario);
+      if (usuario.rol == null) {
         Navigator.of(context).pushReplacement(
-          AppRoutes.fade(TwoFactorVerifyScreen(usuario: usuario)),
-        );
-        return;
-      }
-
-      // La verificación en dos pasos es obligatoria: si esta cuenta
-      // todavía no la tiene activada, hay que configurarla ahora mismo
-      // antes de poder entrar. Si el usuario se echa para atrás sin
-      // completarla, simplemente no queda una sesión iniciada.
-      final actualizado = await Navigator.of(context).push<Usuario>(
-        AppRoutes.slide(TwoFactorSetupScreen(usuario: usuario)),
-      );
-      if (actualizado == null || !mounted) return;
-
-      SessionService.instance.iniciarSesion(actualizado);
-      if (actualizado.rol == null) {
-        Navigator.of(context).pushReplacement(
-          AppRoutes.fade(RoleSelectionScreen(usuario: actualizado)),
+          AppRoutes.fade(RoleSelectionScreen(usuario: usuario)),
         );
       } else {
         Navigator.of(context).pushReplacement(
-          AppRoutes.fade(pantallaPrincipalParaRol(actualizado)),
+          AppRoutes.fade(pantallaPrincipalParaRol(usuario)),
         );
       }
     } on AuthException catch (e) {
@@ -111,8 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _ocultarContrasena,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  helperText: 'Te pediremos el código de verificación en '
-                      'dos pasos después',
                   suffixIcon: IconButton(
                     icon: Icon(
                       _ocultarContrasena
@@ -137,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   child: const Text(
                     '¿Olvidaste tu contraseña?',
-                    style: TextStyle(color: AppColors.accent, fontSize: 13),
+                    style: TextStyle(color: AppColors.accentText, fontSize: 13),
                   ),
                 ),
               ),

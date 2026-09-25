@@ -406,7 +406,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ],
           bottom: TabBar(
             indicatorColor: AppColors.accent,
-            labelColor: AppColors.accent,
+            labelColor: AppColors.accentText,
             unselectedLabelColor: AppColors.textSecondary,
             tabs: [
               Tab(text: 'Usuarios (${_usuarios.length})'),
@@ -625,7 +625,7 @@ class _EstadisticaCard extends StatelessWidget {
         children: [
           Text(valor,
               style: TextStyle(
-                  color: colorValor ?? AppColors.accent,
+                  color: colorValor ?? AppColors.accentText,
                   fontWeight: FontWeight.w800,
                   fontSize: 18)),
           const SizedBox(height: 2),
@@ -655,7 +655,7 @@ class _FiltroEstadoChip extends StatelessWidget {
       side: BorderSide(
           color: seleccionado ? AppColors.accent : AppColors.border),
       labelStyle: TextStyle(
-          color: seleccionado ? AppColors.accent : AppColors.textSecondary),
+          color: seleccionado ? AppColors.accentText : AppColors.textSecondary),
     );
   }
 }
@@ -717,7 +717,7 @@ class _ListaUsuarios extends StatelessWidget {
                     child: Text(
                       u.alias,
                       style: const TextStyle(
-                        color: AppColors.accent,
+                        color: AppColors.accentText,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -997,18 +997,18 @@ class _ResumenComisiones extends StatelessWidget {
         children: [
           const Text('Comisiones de la plataforma (simuladas, 10%)',
               style: TextStyle(
-                  color: Colors.black87,
+                  color: AppColors.onAccent,
                   fontWeight: FontWeight.w600,
                   fontSize: 12.5)),
           const SizedBox(height: 6),
           Text(
             formatearPesos(comisionTotal),
             style: const TextStyle(
-                color: Colors.black, fontWeight: FontWeight.w800, fontSize: 24),
+                color: AppColors.onAccent, fontWeight: FontWeight.w800, fontSize: 24),
           ),
           const SizedBox(height: 2),
           Text('De $cantidad solicitudes completadas',
-              style: const TextStyle(color: Colors.black87, fontSize: 11.5)),
+              style: const TextStyle(color: AppColors.onAccent, fontSize: 11.5)),
         ],
       ),
     );
@@ -1030,7 +1030,7 @@ class _Badge extends StatelessWidget {
       child: Text(
         texto.toUpperCase(),
         style: const TextStyle(
-          color: AppColors.accent,
+          color: AppColors.accentText,
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,

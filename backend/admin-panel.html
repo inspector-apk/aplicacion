@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="/logo.png">
 <title>Inspector — Panel de administrador</title>
 <style>
   :root {
@@ -10,12 +11,14 @@
     --surface: #121212;
     --surface-variant: #1c1c1e;
     --border: #2e2e30;
-    --accent: #ffd700;
-    --accent-dim: #c9a900;
+    --accent: #0070c0;
+    --accent-dim: #00589a;
+    --accent-text: #4da6e8;
+    --secondary: #70c050;
     --text-primary: #f5f5f5;
     --text-secondary: #a0a0a3;
     --text-muted: #6e6e72;
-    --success: #39d98a;
+    --success: #70c050;
     --error: #ff5c5c;
   }
   * { box-sizing: border-box; }
@@ -25,14 +28,14 @@
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   }
-  a { color: var(--accent); }
+  a { color: var(--accent-text); }
   [hidden] { display: none !important; }
 
   /* ---- Logo ---- */
   .logo { display: flex; align-items: center; gap: 10px; }
   .logo img { display: block; flex-shrink: 0; border-radius: 8px; }
   .logo .marca { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--text-primary); }
-  .logo .marca b { color: var(--accent); }
+  .logo .marca b { color: var(--accent-text); }
   #login .logo { justify-content: center; margin-bottom: 22px; }
   #login .logo .marca { font-size: 22px; }
 
@@ -50,7 +53,7 @@
     border: 1px solid var(--border);
     border-radius: 16px;
   }
-  #avisoMovil h2 { color: var(--accent); margin: 0 0 10px; font-size: 18px; }
+  #avisoMovil h2 { color: var(--accent-text); margin: 0 0 10px; font-size: 18px; }
   #avisoMovil p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
   #avisoMovil button {
     margin-top: 18px; width: 100%; padding: 12px; border: none; border-radius: 10px;
@@ -66,7 +69,7 @@
     width: 100%; max-width: 360px; padding: 32px;
     background: var(--surface-variant); border: 1px solid var(--border); border-radius: 18px;
   }
-  #login h1 { color: var(--accent); font-size: 20px; margin: 0 0 6px; letter-spacing: 1px; }
+  #login h1 { color: var(--accent-text); font-size: 20px; margin: 0 0 6px; letter-spacing: 1px; }
   #login p { color: var(--text-secondary); font-size: 13px; margin: 0 0 20px; }
   input, select {
     width: 100%; padding: 12px 14px; margin-bottom: 12px;
@@ -77,7 +80,7 @@
   label.campo { display: block; font-size: 11.5px; color: var(--text-secondary); margin: 0 0 4px; }
   button.principal {
     width: 100%; padding: 13px; border: none; border-radius: 10px;
-    background: var(--accent); color: #000; font-weight: 700; font-size: 14px;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 14px;
     cursor: pointer;
   }
   button.principal:disabled { opacity: 0.5; cursor: default; }
@@ -94,22 +97,22 @@
     background: var(--surface-variant); border: 1px solid var(--border); color: var(--text-secondary);
     border-radius: 10px; padding: 9px 14px; cursor: pointer; font-size: 13px;
   }
-  button.icono:hover { border-color: var(--accent); color: var(--accent); }
+  button.icono:hover { border-color: var(--accent); color: var(--accent-text); }
 
   .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
   .tab {
     padding: 10px 4px; margin-right: 20px; color: var(--text-secondary); font-size: 13.5px;
     font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
   }
-  .tab.activo { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab.activo { color: var(--accent-text); border-bottom-color: var(--accent); }
 
   .resumen {
     background: linear-gradient(135deg, var(--accent), var(--accent-dim));
     border-radius: 16px; padding: 18px 22px; margin-bottom: 20px;
     display: flex; gap: 40px; flex-wrap: wrap;
   }
-  .resumen .item .valor { font-size: 24px; font-weight: 800; color: #000; }
-  .resumen .item .etiqueta { font-size: 12px; color: rgba(0,0,0,.65); font-weight: 600; }
+  .resumen .item .valor { font-size: 24px; font-weight: 800; color: #fff; }
+  .resumen .item .etiqueta { font-size: 12px; color: rgba(255,255,255,.75); font-weight: 600; }
 
   .controles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
   .controles input[type="text"] { max-width: 320px; margin-bottom: 0; }
@@ -119,14 +122,14 @@
     background: var(--surface-variant); color: var(--text-secondary); font-size: 12.5px;
     cursor: pointer; white-space: nowrap;
   }
-  .chip.activo { border-color: var(--accent); color: var(--accent); background: rgba(255,215,0,.12); }
+  .chip.activo { border-color: var(--accent); color: var(--accent-text); background: rgba(0,112,192,.12); }
 
   button.secundario {
-    background: var(--surface-variant); border: 1px solid var(--accent); color: var(--accent);
+    background: var(--surface-variant); border: 1px solid var(--accent); color: var(--accent-text);
     border-radius: 10px; padding: 9px 16px; cursor: pointer; font-size: 13px; font-weight: 600;
     white-space: nowrap;
   }
-  button.secundario:hover { background: rgba(255,215,0,.1); }
+  button.secundario:hover { background: rgba(0,112,192,.1); }
 
   table { width: 100%; border-collapse: collapse; background: var(--surface-variant); border-radius: 14px; overflow: hidden; }
   thead th {
@@ -138,7 +141,7 @@
   tbody tr.fila-solicitud:hover { background: rgba(255,255,255,.02); cursor: pointer; }
   .badge {
     display: inline-block; padding: 3px 9px; border-radius: 8px; font-size: 10.5px;
-    font-weight: 700; letter-spacing: .4px; background: rgba(255,215,0,.12); color: var(--accent);
+    font-weight: 700; letter-spacing: .4px; background: rgba(0,112,192,.12); color: var(--accent-text);
     text-transform: uppercase;
   }
   .badge.bloqueado { background: rgba(255,92,92,.15); color: var(--error); }
@@ -152,7 +155,7 @@
     background: none; border: 1px solid var(--border); color: var(--text-secondary);
     border-radius: 8px; padding: 6px 9px; font-size: 11px; cursor: pointer; margin: 2px 4px 2px 0;
   }
-  .btn-accion-mini:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-accion-mini:hover { border-color: var(--accent); color: var(--accent-text); }
   .acciones-usuario { display: flex; flex-wrap: wrap; }
   .vacio { text-align: center; padding: 40px; color: var(--text-secondary); }
 
@@ -166,7 +169,7 @@
     background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px;
     max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px;
   }
-  .modal h3 { margin: 0 0 14px; color: var(--accent); font-size: 16px; }
+  .modal h3 { margin: 0 0 14px; color: var(--accent-text); font-size: 16px; }
   .modal .fila { margin-bottom: 10px; font-size: 13px; }
   .modal .fila b { color: var(--text-secondary); font-weight: 600; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
   .modal img { max-width: 100%; border-radius: 10px; margin-top: 6px; }
@@ -190,8 +193,7 @@
   <div id="login">
     <div class="caja">
       <div class="logo">
-        <img src="/logo.png" alt="Inspector" width="44" height="44">
-        <span class="marca"><b>INSPECT</b>OR</span>
+        <img src="/logo-horizontal.png" alt="Inspector" height="72">
       </div>
       <p style="text-align:center;">Panel de administrador — pensado para computador.</p>
       <input id="claveInput" type="password" placeholder="Clave de administrador" autofocus>
@@ -203,8 +205,7 @@
   <div id="panel">
     <header class="top">
       <div class="logo">
-        <img src="/logo.png" alt="Inspector" width="30" height="30">
-        <span class="marca"><b>INSPECT</b>OR</span>
+        <img src="/logo-horizontal.png" alt="Inspector" height="38">
       </div>
       <h1 style="font-size:13px; color:var(--text-muted); letter-spacing:1.5px; margin-left:6px;">PANEL DE ADMINISTRADOR</h1>
       <div class="spacer"></div>
@@ -575,7 +576,7 @@
       return `
         <tr>
           <td>
-            <div style="color:var(--accent); font-weight:600;">${escapar(u.alias)}</div>
+            <div style="color: var(--accent-text); font-weight:600;">${escapar(u.alias)}</div>
             <div class="muted">${escapar(u.nombre)} · ${u.edad || ''} años</div>
           </td>
           <td>${escapar(u.correo)}</td>

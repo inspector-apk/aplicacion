@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import '../core/app_colors.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
+import '../services/content_moderation_service.dart';
 import '../services/deteccion_ia_service.dart';
 import '../services/solicitud_service.dart';
 import '../widgets/app_buttons.dart';
@@ -220,6 +221,12 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
             setState(() => _error = 'Escribe tu respuesta de texto');
             return;
           }
+          if (ContentModerationService.respuestaContieneContenidoProhibido(
+              _textoCtrl.text)) {
+            setState(() => _error = 'Tu texto parece contener material '
+                'explícito o violento y no se puede enviar. Cámbialo.');
+            return;
+          }
           texto = _textoCtrl.text.trim();
           break;
         case TipoSolicitud.imagen:
@@ -301,6 +308,36 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
               ImagenReferenciaThumb(
                   imagenBase64: widget.solicitud.imagenReferenciaBase64!),
             ],
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.checklist_outlined,
+                      color: AppColors.accentText, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'El cliente pidió: ${widget.solicitud.tiposEtiqueta}.\n'
+                      'Solo puedes responder con eso; no se habilitan otras '
+                      'opciones.',
+                      style: const TextStyle(
+                        color: AppColors.accentText,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             for (final t in _tipos) ...[
               const SizedBox(height: 24),
               _seccionPara(t),
@@ -311,6 +348,8 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
                   style: const TextStyle(color: AppColors.error, fontSize: 13)),
             ],
             const SizedBox(height: 24),
+            const _GuiaContenido(),
+            const SizedBox(height: 16),
             PrimaryButton(
               label: 'ENVIAR RESPUESTA',
               isLoading: _enviando,
@@ -474,7 +513,7 @@ class _ResponderSolicitudScreenState extends State<ResponderSolicitudScreen> {
                           _reproduciendoPreviewAudio
                               ? Icons.pause_circle_filled
                               : Icons.play_circle_fill,
-                          color: AppColors.accent,
+                          color: AppColors.accentText,
                         ),
                       ),
                       const Text('Audio grabado — listo para enviar',
@@ -776,6 +815,81 @@ class _BarraPorcentaje extends StatelessWidget {
                   color: color, fontWeight: FontWeight.w700, fontSize: 12)),
         ),
       ],
+    );
+  }
+}
+
+/// Guía de contenido permitido: explica qué revisa la verificación
+/// automática que pasa TODA respuesta (texto, foto y video) antes de
+/// llegar al cliente.
+class _GuiaContenido extends StatelessWidget {
+  const _GuiaContenido();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget item(IconData icono, String texto) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icono, color: AppColors.textSecondary, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                texto,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12, height: 1.35),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.verified_user_outlined,
+                  color: AppColors.accentText, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Guía de contenido permitido',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Todo lo que envíes (texto, foto y video) se verifica '
+            'automáticamente antes de llegar al cliente.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          item(Icons.block, 'Nada de desnudez ni contenido sexual explícito.'),
+          item(Icons.block,
+              'Nada de violencia: agresiones, sangre, heridas, armas '
+              'amenazantes o maltrato.'),
+          item(Icons.check_circle_outline,
+              'Sí: lugares, fachadas, calles, locales, objetos y lo que '
+              'el cliente pidió.'),
+          item(Icons.info_outline,
+              'Si se detecta material explícito o violento, la respuesta se '
+              'rechaza y no se entrega.'),
+        ],
+      ),
     );
   }
 }

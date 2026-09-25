@@ -146,14 +146,14 @@ class _PagoFicticioScreenState extends State<PagoFicticioScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.credit_card, color: Colors.black, size: 28),
+                  const Icon(Icons.credit_card, color: AppColors.onAccent, size: 28),
                   const SizedBox(height: 18),
                   Text(
                     _numeroCtrl.text.isEmpty
                         ? '•••• •••• •••• ••••'
                         : _numeroCtrl.text.padRight(19, '•'),
                     style: const TextStyle(
-                      color: Colors.black,
+                      color: AppColors.onAccent,
                       fontSize: 18,
                       letterSpacing: 2,
                       fontWeight: FontWeight.w600,
@@ -165,7 +165,7 @@ class _PagoFicticioScreenState extends State<PagoFicticioScreen> {
                         ? 'NOMBRE APELLIDO'
                         : _nombreCtrl.text.trim().toUpperCase(),
                     style: const TextStyle(
-                      color: Colors.black,
+                      color: AppColors.onAccent,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -252,7 +252,7 @@ class _PagoFicticioScreenState extends State<PagoFicticioScreen> {
                   Text(
                     formatearPesos(valorTotal),
                     style: const TextStyle(
-                        color: AppColors.accent,
+                        color: AppColors.accentText,
                         fontWeight: FontWeight.w800,
                         fontSize: 17),
                   ),

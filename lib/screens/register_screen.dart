@@ -95,6 +95,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
+              const Text(
+                'Completa tus datos. Al final debes leer y aceptar los '
+                'términos y condiciones, las políticas de uso y la '
+                'normatividad para poder crear tu cuenta.',
+                style: TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12.5, height: 1.4),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nombreCtrl,
                 textCapitalization: TextCapitalization.words,
@@ -199,9 +207,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     setState(() => _aceptoPoliticas = v),
                 onDeclaraMayorEdadChanged: (v) =>
                     setState(() => _declaraMayorEdad = v),
-                onVerPolitica: () {
-                  Navigator.of(context)
-                      .push(AppRoutes.slide(const PolicyScreen()));
+                onVerDocumento: (indice) {
+                  Navigator.of(context).push(
+                      AppRoutes.slide(PolicyScreen(pestanaInicial: indice)));
                 },
               ),
               const SizedBox(height: 28),
@@ -210,6 +218,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 isLoading: _cargando,
                 onPressed: _politicasCompletas ? _continuarAVerificacion : null,
               ),
+              if (!_politicasCompletas) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Para continuar, acepta los términos, las políticas y la '
+                  'normatividad, y confirma que eres mayor de 18 años.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              ],
             ],
           ),
         ),

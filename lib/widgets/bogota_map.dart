@@ -73,11 +73,11 @@ Marker buildMiUbicacionMarker({required LatLng punto}) {
     height: 26,
     child: Container(
       decoration: BoxDecoration(
-        color: Colors.blue,
+        color: AppColors.secondary,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
-          BoxShadow(color: Colors.blue.withOpacity(0.5), blurRadius: 8),
+          BoxShadow(color: AppColors.secondary.withOpacity(0.5), blurRadius: 8),
         ],
       ),
     ),
@@ -106,7 +106,7 @@ List<LatLng> conVariacionAleatoria(List<LatLng> anclas) {
 }
 
 /// Colaborador disponible en el mapa: la lupa de "Inspector" dentro de
-/// una placa dorada, como el resto de la identidad de la app.
+/// una placa azul, como el resto de la identidad de la app.
 Marker buildColaboradorMarker({required LatLng punto}) {
   return Marker(
     point: punto,
@@ -124,7 +124,7 @@ Marker buildColaboradorMarker({required LatLng punto}) {
           ),
         ],
       ),
-      child: const Icon(Icons.travel_explore, color: Colors.black, size: 19),
+      child: const Icon(Icons.travel_explore, color: AppColors.onAccent, size: 19),
     ),
   );
 }

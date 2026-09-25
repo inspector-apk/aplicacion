@@ -185,7 +185,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.verified_user_outlined, color: AppColors.accent),
+            const Icon(Icons.verified_user_outlined, color: AppColors.accentText),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -217,7 +217,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: TextButton(
           onPressed: _cargando ? null : _enviarCodigo,
           child: const Text('Reenviar código',
-              style: TextStyle(color: AppColors.accent, fontSize: 13)),
+              style: TextStyle(color: AppColors.accentText, fontSize: 13)),
         ),
       ),
       const SizedBox(height: 8),
@@ -240,7 +240,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.verified_user_outlined, color: AppColors.accent),
+            const Icon(Icons.verified_user_outlined, color: AppColors.accentText),
             const SizedBox(width: 10),
             Expanded(
               child: Text(

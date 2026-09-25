@@ -141,7 +141,11 @@ class _ColaboradorHomeScreenState extends State<ColaboradorHomeScreen> {
 
   Future<void> _cargarDatos() async {
     try {
-      final pendientes = await SolicitudService.solicitudesPendientes();
+      // Un usuario que también es cliente nunca ve (ni puede tomar) sus
+      // propias solicitudes cuando cambia de rol a colaborador.
+      final pendientes = (await SolicitudService.solicitudesPendientes())
+          .where((s) => s.clienteAlias != widget.usuario.alias)
+          .toList();
       final enCurso = await SolicitudService.solicitudesEnCursoDeColaborador(
         widget.usuario.alias,
       );

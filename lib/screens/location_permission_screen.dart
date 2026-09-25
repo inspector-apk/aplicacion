@@ -59,7 +59,7 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
                 ),
                 child: const Icon(
                   Icons.location_on_outlined,
-                  color: AppColors.accent,
+                  color: AppColors.accentText,
                   size: 46,
                 ),
               ),

@@ -111,14 +111,14 @@ class _GananciasScreenState extends State<GananciasScreen> {
             children: [
               const Text('Ganancias totales (simuladas)',
                   style: TextStyle(
-                      color: Colors.black87,
+                      color: AppColors.onAccent,
                       fontWeight: FontWeight.w600,
                       fontSize: 13)),
               const SizedBox(height: 6),
               Text(
                 formatearPesos(totalGanado),
                 style: const TextStyle(
-                    color: Colors.black,
+                    color: AppColors.onAccent,
                     fontWeight: FontWeight.w800,
                     fontSize: 30),
               ),
@@ -126,12 +126,12 @@ class _GananciasScreenState extends State<GananciasScreen> {
               Text(
                 '${completadas.length} solicitudes completadas'
                 '${enCurso > 0 ? ' · $enCurso en curso' : ''}',
-                style: const TextStyle(color: Colors.black87, fontSize: 12.5),
+                style: const TextStyle(color: AppColors.onAccent, fontSize: 12.5),
               ),
               const SizedBox(height: 2),
               const Text(
                 'Ya se descontó el 10% de comisión de la plataforma (simulado)',
-                style: TextStyle(color: Colors.black54, fontSize: 11),
+                style: TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ],
           ),

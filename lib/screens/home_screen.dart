@@ -11,9 +11,9 @@ import '../widgets/app_buttons.dart';
 import '../widgets/solicitud_info_row.dart';
 import 'ganancias_screen.dart';
 import 'historial_solicitudes_screen.dart';
+import 'policy_screen.dart';
 import 'role_selection_screen.dart';
 import 'splash_screen.dart';
-import 'two_factor_setup_screen.dart';
 
 /// Bancos ficticios para el selector de cuenta bancaria del colaborador
 /// (no representan entidades reales conectadas a la app).
@@ -36,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
   late Usuario _usuario = widget.usuario;
   Solicitud? _solicitudActiva;
   bool _cargandoSolicitud = false;
-  bool _cargando2fa = false;
   bool _guardandoPerfil = false;
 
   late final _ocupacionCtrl = TextEditingController(text: _usuario.ocupacion);
@@ -103,53 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       AppRoutes.slide(RoleSelectionScreen(usuario: _usuario)),
     );
-  }
-
-  Future<void> _activar2fa() async {
-    final resultado = await Navigator.of(context).push<Usuario>(
-      AppRoutes.slide(TwoFactorSetupScreen(usuario: _usuario)),
-    );
-    if (resultado != null && mounted) {
-      setState(() => _usuario = resultado);
-      SessionService.instance.iniciarSesion(resultado);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verificación en dos pasos activada')),
-      );
-    }
-  }
-
-  Future<void> _desactivar2fa() async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Desactivar verificación en dos pasos'),
-        content: const Text(
-          '¿Seguro que quieres desactivarla? Tu cuenta quedará protegida '
-          'solo con tu contraseña.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Desactivar',
-                style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirmar != true) return;
-
-    setState(() => _cargando2fa = true);
-    final actualizado = await AuthService.desactivarDobleFactor(_usuario.id!);
-    if (!mounted) return;
-    setState(() {
-      _usuario = actualizado;
-      _cargando2fa = false;
-    });
-    SessionService.instance.iniciarSesion(actualizado);
   }
 
   Future<void> _guardarPerfilColaborador() async {
@@ -250,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       usuario.alias,
                       style: const TextStyle(
-                        color: AppColors.accent,
+                        color: AppColors.accentText,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                       ),
@@ -267,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         _rolLabel.toUpperCase(),
                         style: const TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.accentText,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
@@ -325,13 +277,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
               const SizedBox(height: 20),
-              _SeguridadCard(
-                habilitado: usuario.totpHabilitado,
-                cargando: _cargando2fa,
-                onActivar: _activar2fa,
-                onDesactivar: _desactivar2fa,
+              OutlineActionButton(
+                label: 'TÉRMINOS Y POLÍTICAS',
+                onPressed: () => Navigator.of(context)
+                    .push(AppRoutes.slide(const PolicyScreen())),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               OutlineActionButton(
                 label: 'CAMBIAR DE ROL',
                 onPressed: () => _cambiarRol(context),
@@ -407,7 +358,7 @@ class _SolicitudActivaCard extends StatelessWidget {
                 esPendiente
                     ? Icons.hourglass_top_rounded
                     : Icons.fact_check_outlined,
-                color: AppColors.accent,
+                color: AppColors.accentText,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -430,78 +381,6 @@ class _SolicitudActivaCard extends StatelessWidget {
             SolicitudInfoRow(
                 icono: Icons.location_on_outlined, texto: s.direccion),
           SolicitudInfoRow(icono: Icons.notes_outlined, texto: s.descripcion),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tarjeta de "Seguridad" en el Perfil: estado de la verificación en dos
-/// pasos (TOTP) y botón para activarla o desactivarla.
-class _SeguridadCard extends StatelessWidget {
-  final bool habilitado;
-  final bool cargando;
-  final VoidCallback onActivar;
-  final VoidCallback onDesactivar;
-
-  const _SeguridadCard({
-    required this.habilitado,
-    required this.cargando,
-    required this.onActivar,
-    required this.onDesactivar,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                habilitado ? Icons.shield : Icons.shield_outlined,
-                color: habilitado ? AppColors.success : AppColors.textSecondary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Verificación en dos pasos',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            habilitado
-                ? 'Activada: además de tu contraseña, se pide un código de '
-                    'tu app autenticadora al iniciar sesión.'
-                : 'Desactivada: activa un código de tu app autenticadora '
-                    '(Google Authenticator, Authy, etc.) como segundo factor.',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
-          ),
-          const SizedBox(height: 14),
-          habilitado
-              ? OutlineActionButton(
-                  label: cargando ? 'DESACTIVANDO...' : 'DESACTIVAR',
-                  onPressed: cargando ? null : onDesactivar,
-                )
-              : PrimaryButton(
-                  label: 'ACTIVAR',
-                  isLoading: cargando,
-                  onPressed: onActivar,
-                ),
         ],
       ),
     );

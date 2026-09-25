@@ -5,6 +5,8 @@ const cors = require('cors');
 const db = require('./db');
 const ubicaciones = require('./ubicaciones');
 const usuarios = require('./usuarios');
+const moderacion = require('./moderacion');
+const geocodificacion = require('./geocodificacion');
 
 const app = express();
 app.use(cors());
@@ -96,6 +98,15 @@ app.post('/api/solicitudes/:id/aceptar', requiereApiKey, (req, res) => {
     return res.status(400).json({ ok: false, error: 'colaboradorAlias es requerido' });
   }
 
+  // Quien pidió el servicio no puede tomarlo él mismo aunque cambie de
+  // rol a colaborador.
+  const existente = db.obtenerPorId(id);
+  if (existente && existente.cliente_alias === colaboradorAlias) {
+    return res
+      .status(403)
+      .json({ ok: false, error: 'No puedes tomar tu propia solicitud' });
+  }
+
   const solicitud = db.aceptarSolicitud(id, colaboradorAlias);
   if (!solicitud) {
     // Alguien más ya la aceptó, o ya no existe: "el primero que acepta se la gana".
@@ -109,7 +120,7 @@ app.post('/api/solicitudes/:id/aceptar', requiereApiKey, (req, res) => {
 // El colaborador envía su respuesta (uno o varios de: texto, imagen,
 // audio, video) y con eso mismo queda completada la solicitud. Debe
 // traer contenido para CADA tipo que se pidió originalmente.
-app.post('/api/solicitudes/:id/responder', requiereApiKey, (req, res) => {
+app.post('/api/solicitudes/:id/responder', requiereApiKey, async (req, res) => {
   const id = Number(req.params.id);
   const { colaboradorAlias, texto, imagenBase64, audioBase64, videoBase64 } = req.body;
 
@@ -121,12 +132,57 @@ app.post('/api/solicitudes/:id/responder', requiereApiKey, (req, res) => {
   if (!solicitudExistente) {
     return res.status(404).json({ ok: false, error: 'Solicitud no encontrada' });
   }
+  if (solicitudExistente.cliente_alias === colaboradorAlias) {
+    return res
+      .status(403)
+      .json({ ok: false, error: 'No puedes responder tu propia solicitud' });
+  }
   const contenidoPorTipo = { texto, imagen: imagenBase64, audio: audioBase64, video: videoBase64 };
+  // Solo se acepta contenido de los tipos que el cliente pidió: si pidió
+  // foto no se puede responder con un video, y así con cada tipo.
+  const noPedidos = Object.keys(contenidoPorTipo).filter(
+    (t) => contenidoPorTipo[t] && !solicitudExistente.tipos.includes(t)
+  );
+  if (noPedidos.length > 0) {
+    return res.status(400).json({
+      ok: false,
+      error: `Esta solicitud no pidió: ${noPedidos.join(', ')}`,
+    });
+  }
   const faltantes = solicitudExistente.tipos.filter((t) => !contenidoPorTipo[t]);
   if (faltantes.length > 0) {
     return res.status(400).json({
       ok: false,
       error: `Falta responder: ${faltantes.join(', ')}`,
+    });
+  }
+
+  // Verificación de contenido: lo que envía el colaborador (texto, imagen
+  // y video) no puede contener material explícito ni violento.
+  let veredicto;
+  try {
+    veredicto = await moderacion.verificarRespuesta({ texto, imagenBase64, videoBase64 });
+  } catch (err) {
+    console.error('Error en la moderación:', err);
+    return res.status(503).json({
+      ok: false,
+      error: 'No se pudo verificar el contenido de tu respuesta. Inténtalo de nuevo.',
+    });
+  }
+  if (!veredicto.permitido) {
+    if (veredicto.verificado) {
+      console.warn(`Respuesta rechazada (solicitud ${id}, ${colaboradorAlias}): ${veredicto.motivo}`);
+      return res.status(422).json({
+        ok: false,
+        error: 'Tu respuesta fue rechazada porque contiene material explícito o '
+          + `violento${veredicto.motivo ? ` (${veredicto.motivo})` : ''}. `
+          + 'Cámbiala e inténtalo de nuevo.',
+      });
+    }
+    return res.status(503).json({
+      ok: false,
+      error: 'No se pudo verificar el contenido de tu respuesta en este momento. '
+        + 'Inténtalo de nuevo más tarde.',
     });
   }
 
@@ -463,8 +519,28 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
+// Buscador de lugares de Bogotá para marcar el punto de una solicitud
+// (dirección, conjunto, edificio...). Con caché y límite de velocidad
+// hacia los servicios gratuitos de OpenStreetMap.
+app.get('/api/geocodificar', requiereApiKey, async (req, res) => {
+  const q = String(req.query.q || '');
+  const lat = parseFloat(req.query.lat);
+  const lon = parseFloat(req.query.lon);
+  const cerca = Number.isNaN(lat) || Number.isNaN(lon) ? null : { lat, lon };
+  try {
+    res.json({ ok: true, lugares: await geocodificacion.buscar(q, cerca) });
+  } catch (err) {
+    console.error('Error en geocodificación:', err.message);
+    res.status(503).json({ ok: false, error: 'No se pudo buscar el lugar' });
+  }
+});
+
 app.get('/api/salud', (req, res) => res.json({ ok: true }));
 
 app.listen(PUERTO, () => {
   console.log(`Backend de solicitudes de Inspector escuchando en el puerto ${PUERTO}`);
+  console.log(moderacion.descripcionEstado());
+  // Descarga/carga los modelos de imagen en segundo plano (la primera vez
+  // baja ~250 MB); no bloquea el arranque.
+  moderacion.precargar();
 });

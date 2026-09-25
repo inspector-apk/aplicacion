@@ -156,7 +156,7 @@ class _RoleCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.accent),
+            const Icon(Icons.chevron_right, color: AppColors.accentText),
           ],
         ),
       ),

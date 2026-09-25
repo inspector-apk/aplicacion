@@ -12,7 +12,6 @@ import '../core/precios.dart';
 import '../core/sugerencias_descripcion.dart';
 import '../models/solicitud.dart';
 import '../models/usuario.dart';
-import '../services/content_moderation_service.dart';
 import '../services/solicitud_service.dart';
 import '../services/ubicacion_service.dart';
 import '../widgets/app_buttons.dart';
@@ -46,10 +45,10 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
   Urgencia _urgencia = Urgencia.dosDias;
   final Set<TipoSolicitud> _tipos = {TipoSolicitud.texto};
   String? _localidad;
-  final _descripcionCtrl = TextEditingController();
-  final _direccionCtrl = TextEditingController();
+  String? _opcion;
   File? _imagenReferencia;
   LatLng? _puntoExacto;
+  String? _nombrePunto;
   Timer? _actualizacionPeriodica;
   Timer? _actualizacionColaboradores;
   List<ColaboradorCercano> _colaboradoresCercanos = [];
@@ -76,8 +75,6 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
 
   @override
   void dispose() {
-    _descripcionCtrl.dispose();
-    _direccionCtrl.dispose();
     _actualizacionPeriodica?.cancel();
     _actualizacionColaboradores?.cancel();
     super.dispose();
@@ -128,21 +125,22 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       return;
     }
     final centroLocalidad = kLocalidadesBogota[_localidad] ?? kBogotaCenter;
-    final punto = await Navigator.of(context).push<LatLng>(
+    final elegido = await Navigator.of(context).push<PuntoSeleccionado>(
       AppRoutes.slide(
         SeleccionarPuntoScreen(
           centroInicial: centroLocalidad,
           puntoInicial: _puntoExacto,
+          nombreInicial: _nombrePunto,
         ),
       ),
     );
-    if (punto == null) return;
-    setState(() => _puntoExacto = punto);
+    if (elegido == null) return;
+    setState(() {
+      _puntoExacto = elegido.punto;
+      _nombrePunto = elegido.nombre;
+    });
   }
 
-  void _quitarPuntoExacto() {
-    setState(() => _puntoExacto = null);
-  }
 
   void _alternarTipo(TipoSolicitud t) {
     setState(() {
@@ -151,7 +149,17 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       } else {
         _tipos.add(t);
       }
+      _revalidarOpcion();
     });
+  }
+
+  /// Si la opción elegida ya no aplica a la categoría o a los tipos de
+  /// contenido actuales, se descarta para que el cliente vuelva a elegir.
+  void _revalidarOpcion() {
+    if (_opcion == null) return;
+    final sigueVigente =
+        opcionesPara(_categoria, _tipos).any((o) => o.texto == _opcion);
+    if (!sigueVigente) _opcion = null;
   }
 
   Future<void> _enviarSolicitud() async {
@@ -159,22 +167,16 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
       _mostrarMensaje('Elige al menos un tipo de contenido');
       return;
     }
+    if (_opcion == null) {
+      _mostrarMensaje('Elige qué debe hacer el colaborador (paso 3)');
+      return;
+    }
     if (_localidad == null) {
-      _mostrarMensaje('Selecciona la localidad');
+      _mostrarMensaje('Selecciona la localidad (paso 4)');
       return;
     }
-    if (_direccionCtrl.text.trim().isEmpty) {
-      _mostrarMensaje('Escribe la dirección exacta');
-      return;
-    }
-    if (_descripcionCtrl.text.trim().isEmpty) {
-      _mostrarMensaje('Describe lo que necesitas');
-      return;
-    }
-    if (ContentModerationService.contieneContenidoProhibido(
-        _descripcionCtrl.text)) {
-      _mostrarMensaje(
-          'Tu solicitud contiene contenido no permitido y no se puede enviar.');
+    if (_puntoExacto == null) {
+      _mostrarMensaje('Busca la dirección o marca el punto en el mapa (paso 4)');
       return;
     }
 
@@ -205,19 +207,19 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
         tipos: tiposOrdenados,
         categoria: _categoria,
         urgencia: _urgencia,
-        descripcion: _descripcionCtrl.text,
+        descripcion: _opcion!,
         localidad: _localidad!,
-        direccion: _direccionCtrl.text,
+        direccion: _nombrePunto ?? 'Punto marcado en el mapa',
         referenciaPago: resultadoPago.referencia,
         metodoPago: resultadoPago.metodo,
         imagenReferenciaBase64: imagenReferenciaBase64,
         puntoExacto: _puntoExacto,
       );
-      _descripcionCtrl.clear();
-      _direccionCtrl.clear();
       setState(() {
+        _opcion = null;
         _imagenReferencia = null;
         _puntoExacto = null;
+        _nombrePunto = null;
       });
       await _cargarSolicitudActiva();
       if (mounted) {
@@ -327,21 +329,24 @@ class _ClienteHomeScreenState extends State<ClienteHomeScreen> {
                       urgencia: _urgencia,
                       tipos: _tipos,
                       localidad: _localidad,
-                      descripcionCtrl: _descripcionCtrl,
-                      direccionCtrl: _direccionCtrl,
+                      opcion: _opcion,
                       imagenReferencia: _imagenReferencia,
                       puntoExacto: _puntoExacto,
+                      nombrePunto: _nombrePunto,
                       cargando: _enviando,
                       onCategoriaChanged: (c) =>
-                          setState(() => _categoria = c),
+                          setState(() {
+                            _categoria = c;
+                            _revalidarOpcion();
+                          }),
                       onUrgenciaChanged: (u) => setState(() => _urgencia = u),
                       onTipoToggle: _alternarTipo,
+                      onOpcionChanged: (o) => setState(() => _opcion = o),
                       onLocalidadChanged: (l) =>
                           setState(() => _localidad = l),
                       onElegirImagen: _elegirImagenReferencia,
                       onQuitarImagen: _quitarImagenReferencia,
                       onMarcarPunto: _marcarPuntoEnElMapa,
-                      onQuitarPunto: _quitarPuntoExacto,
                       onEnviar: _enviarSolicitud,
                     ),
             ),
@@ -355,336 +360,339 @@ class _PanelFormulario extends StatelessWidget {
   final Categoria categoria;
   final Urgencia urgencia;
   final Set<TipoSolicitud> tipos;
+  final String? opcion;
   final String? localidad;
-  final TextEditingController descripcionCtrl;
-  final TextEditingController direccionCtrl;
   final File? imagenReferencia;
   final LatLng? puntoExacto;
+  final String? nombrePunto;
   final bool cargando;
   final ValueChanged<Categoria> onCategoriaChanged;
   final ValueChanged<Urgencia> onUrgenciaChanged;
   final ValueChanged<TipoSolicitud> onTipoToggle;
+  final ValueChanged<String> onOpcionChanged;
   final ValueChanged<String?> onLocalidadChanged;
   final ValueChanged<ImageSource> onElegirImagen;
   final VoidCallback onQuitarImagen;
   final VoidCallback onMarcarPunto;
-  final VoidCallback onQuitarPunto;
   final VoidCallback onEnviar;
 
   const _PanelFormulario({
     required this.categoria,
     required this.urgencia,
     required this.tipos,
+    required this.opcion,
     required this.localidad,
-    required this.descripcionCtrl,
-    required this.direccionCtrl,
     required this.imagenReferencia,
     required this.puntoExacto,
+    required this.nombrePunto,
     required this.cargando,
     required this.onCategoriaChanged,
     required this.onUrgenciaChanged,
     required this.onTipoToggle,
+    required this.onOpcionChanged,
     required this.onLocalidadChanged,
     required this.onElegirImagen,
     required this.onQuitarImagen,
     required this.onMarcarPunto,
-    required this.onQuitarPunto,
     required this.onEnviar,
   });
 
   @override
   Widget build(BuildContext context) {
     final valorTotal = calcularValorTotal(categoria, tipos, urgencia);
+    final opciones = opcionesPara(categoria, tipos);
 
     return MapBottomPanel(
+      maxHeightFraction: 0.7,
       child: SingleChildScrollView(
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '¿Para qué es tu solicitud?',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: Categoria.values.map((c) {
-              final esUltimo = c == Categoria.values.last;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: esUltimo ? 0 : 8),
-                  child: _CategoriaChip(
-                    label: c.etiqueta,
-                    seleccionado: categoria == c,
-                    onTap: () => onCategoriaChanged(c),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            '¿Qué necesitas solicitar?',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Puedes elegir varios (ej. imagen y audio a la vez).',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: TipoSolicitud.values.map((t) {
-              return SizedBox(
-                width: (MediaQuery.of(context).size.width - 40 - 10) / 2,
-                child: _TipoChip(
-                  label: t.etiqueta,
-                  icon: _iconoDeTipo(t),
-                  precio: formatearPesos(precioDe(categoria, t)),
-                  seleccionado: tipos.contains(t),
-                  onTap: () => onTipoToggle(t),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            '¿Qué tan rápido la necesitas?',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Entre más rápido, más alto el valor de referencia.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: Urgencia.values.map((u) {
-              return SizedBox(
-                width: (MediaQuery.of(context).size.width - 40 - 20) / 3,
-                child: _UrgenciaChip(
-                  label: u.etiqueta,
-                  multiplicador: multiplicadorDe(u),
-                  seleccionada: urgencia == u,
-                  onTap: () => onUrgenciaChanged(u),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Sugerencias (opcional)',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Toca una para agregarla a tu descripción — luego puedes '
-            'editarla como quieras.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: (kSugerenciasDescripcion[categoria] ?? []).length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final sugerencia = kSugerenciasDescripcion[categoria]![i];
-                return ActionChip(
-                  label: Text(sugerencia, style: const TextStyle(fontSize: 12)),
-                  backgroundColor: AppColors.surfaceVariant,
-                  side: const BorderSide(color: AppColors.border),
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  onPressed: () => _agregarSugerencia(descripcionCtrl, sugerencia),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: descripcionCtrl,
-            maxLines: 3,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: const InputDecoration(
-              labelText: 'Describe lo que quieres solicitar',
-              helperText: 'Sé específico: qué información o imagen '
-                  'necesitas y de qué lugar exactamente',
-            ),
-          ),
-          const SizedBox(height: 14),
-          DropdownButtonFormField<String>(
-            value: localidad,
-            dropdownColor: AppColors.surfaceVariant,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-            decoration: const InputDecoration(
-              labelText: 'Localidad donde se obtendrá la información',
-              helperText: 'El colaborador que acepte tu solicitud irá a '
-                  'esta localidad de Bogotá',
-            ),
-            items: kLocalidadesBogota.keys
-                .map((l) => DropdownMenuItem(value: l, child: Text(l)))
-                .toList(),
-            onChanged: onLocalidadChanged,
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: direccionCtrl,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: const InputDecoration(
-              labelText: 'Dirección exacta',
-              helperText: 'Calle/carrera y número donde debe ir el colaborador',
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (puntoExacto != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.success.withOpacity(0.4)),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Nueva solicitud',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: AppColors.success, size: 18),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Punto exacto marcado en el mapa',
-                      style: TextStyle(color: AppColors.success, fontSize: 12.5),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Pide que un colaborador vaya a un lugar de Bogotá y te '
+              'traiga la información. Solo eliges opciones: no hay que '
+              'escribir nada.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+            ),
+            const SizedBox(height: 12),
+            const _ComoFunciona(),
+            const SizedBox(height: 22),
+
+            // ---- Paso 1: tipo de servicio ----
+            const _PasoTitulo(
+              numero: 1,
+              titulo: '¿Para qué es?',
+              ayuda: 'Personal: tus asuntos · Comercial: locales y negocios · '
+                  'Industrial: bodegas y plantas.',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: Categoria.values.map((c) {
+                final esUltimo = c == Categoria.values.last;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: esUltimo ? 0 : 8),
+                    child: _CategoriaChip(
+                      label: c.etiqueta,
+                      seleccionado: categoria == c,
+                      onTap: () => onCategoriaChanged(c),
                     ),
                   ),
-                  TextButton(
-                    onPressed: onQuitarPunto,
-                    child: const Text('Quitar',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // ---- Paso 2: qué le traen ----
+            const _PasoTitulo(
+              numero: 2,
+              titulo: '¿Qué quieres que te traigan?',
+              ayuda: 'Marca uno o varios. El colaborador deberá responder '
+                  'con todo lo que elijas.',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: TipoSolicitud.values.map((t) {
+                final esUltimo = t == TipoSolicitud.values.last;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: esUltimo ? 0 : 8),
+                    child: _TipoChip(
+                      label: t.etiqueta,
+                      icon: _iconoDeTipo(t),
+                      precio: formatearPesos(precioDe(categoria, t)),
+                      seleccionado: tipos.contains(t),
+                      onTap: () => onTipoToggle(t),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // ---- Paso 3: qué debe hacer ----
+            const _PasoTitulo(
+              numero: 3,
+              titulo: '¿Qué debe hacer el colaborador?',
+              ayuda: 'Elige una opción. Solo aparecen las que coinciden con '
+                  'lo que ya elegiste arriba.',
+            ),
+            const SizedBox(height: 12),
+            ...opciones.map(
+              (o) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _OpcionTile(
+                  texto: o.texto,
+                  seleccionada: opcion == o.texto,
+                  onTap: () => onOpcionChanged(o.texto),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ---- Paso 4: dónde ----
+            const _PasoTitulo(
+              numero: 4,
+              titulo: '¿Dónde?',
+              ayuda: 'Elige la localidad y luego busca la dirección, el '
+                  'conjunto o el edificio, o marca el punto en el mapa.',
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: localidad,
+              dropdownColor: AppColors.surfaceVariant,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: const InputDecoration(
+                labelText: 'Localidad de Bogotá',
+              ),
+              items: kLocalidadesBogota.keys
+                  .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                  .toList(),
+              onChanged: onLocalidadChanged,
+            ),
+            const SizedBox(height: 10),
+            if (puntoExacto != null)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        color: AppColors.success, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        nombrePunto != null
+                            ? 'Ubicado: $nombrePunto'
+                            : 'Punto exacto marcado en el mapa',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.success, fontSize: 12.5),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: onMarcarPunto,
+                      child: const Text('Cambiar',
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 12)),
+                    ),
+                  ],
+                ),
+              )
+            else
+              OutlineActionButton(
+                label: 'BUSCAR DIRECCIÓN O MARCAR EN EL MAPA',
+                onPressed: onMarcarPunto,
+              ),
+            const SizedBox(height: 14),
+            const Text(
+              'Foto de referencia (opcional)',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Ayuda al colaborador a reconocer el lugar o lo que buscas.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            if (imagenReferencia != null)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      imagenReferencia!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: InkWell(
+                      onTap: onQuitarImagen,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black87,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlineActionButton(
+                      label: 'CÁMARA',
+                      onPressed: () => onElegirImagen(ImageSource.camera),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlineActionButton(
+                      label: 'GALERÍA',
+                      onPressed: () => onElegirImagen(ImageSource.gallery),
+                    ),
                   ),
                 ],
               ),
-            )
-          else
-            OutlineActionButton(
-              label: 'MARCAR EL PUNTO EN EL MAPA (OPCIONAL)',
-              onPressed: onMarcarPunto,
+            const SizedBox(height: 24),
+
+            // ---- Paso 5: urgencia ----
+            const _PasoTitulo(
+              numero: 5,
+              titulo: '¿Para cuándo la necesitas?',
+              ayuda: 'Entre más rápido, más alto el valor.',
             ),
-          const SizedBox(height: 18),
-          const Text(
-            'Imagen de referencia (opcional)',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Si lo crees necesario, adjunta una foto que ayude al '
-            'colaborador a entender exactamente qué necesitas.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          if (imagenReferencia != null)
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.file(
-                    imagenReferencia!,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: InkWell(
-                    onTap: onQuitarImagen,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.black87,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close,
-                          color: Colors.white, size: 18),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          else
+            const SizedBox(height: 12),
             Row(
-              children: [
-                Expanded(
-                  child: OutlineActionButton(
-                    label: 'CÁMARA',
-                    onPressed: () => onElegirImagen(ImageSource.camera),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlineActionButton(
-                    label: 'GALERÍA',
-                    onPressed: () => onElegirImagen(ImageSource.gallery),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.accent.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.sell_outlined, color: AppColors.accent, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Valor de referencia (ficticio): ${formatearPesos(valorTotal)}',
-                    style: const TextStyle(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
+              children: Urgencia.values.map((u) {
+                final esUltimo = u == Urgencia.values.last;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: esUltimo ? 0 : 8),
+                    child: _UrgenciaChip(
+                      label: u.etiqueta,
+                      multiplicador: multiplicadorDe(u),
+                      seleccionada: urgencia == u,
+                      onTap: () => onUrgenciaChanged(u),
                     ),
                   ),
-                ),
-              ],
+                );
+              }).toList(),
             ),
-          ),
-          const SizedBox(height: 18),
-          PrimaryButton(
-            label: 'PAGAR Y ENVIAR SOLICITUD',
-            isLoading: cargando,
-            onPressed: onEnviar,
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // ---- Resumen y envío ----
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.sell_outlined,
+                      color: AppColors.accentText, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Valor de referencia (ficticio): '
+                      '${formatearPesos(valorTotal)}',
+                      style: const TextStyle(
+                        color: AppColors.accentText,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: 'PAGAR Y ENVIAR SOLICITUD',
+              isLoading: cargando,
+              onPressed: onEnviar,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'El pago es simulado: no se cobra dinero real. Al enviarla, un '
+              'colaborador la acepta y te responde; verás su respuesta una '
+              'sola vez.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
+            ),
+          ],
         ),
       ),
     );
@@ -702,19 +710,63 @@ class _PanelFormulario extends StatelessWidget {
         return Icons.videocam_outlined;
     }
   }
+}
 
-  /// Agrega la sugerencia al final del texto (si ya la tiene, no la
-  /// repite); si el campo está vacío, simplemente la pone.
-  void _agregarSugerencia(TextEditingController ctrl, String sugerencia) {
-    final actual = ctrl.text.trim();
-    if (actual.isEmpty) {
-      ctrl.text = sugerencia;
-    } else if (!actual.contains(sugerencia)) {
-      ctrl.text = '$actual. $sugerencia';
-    } else {
-      return;
-    }
-    ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
+/// Opción de la lista de "qué debe hacer el colaborador" (selección única).
+class _OpcionTile extends StatelessWidget {
+  final String texto;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  const _OpcionTile({
+    required this.texto,
+    required this.seleccionada,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: seleccionada
+              ? AppColors.accent.withOpacity(0.15)
+              : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: seleccionada ? AppColors.accent : AppColors.border,
+            width: seleccionada ? 1.4 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              seleccionada ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: seleccionada ? AppColors.accentText : AppColors.textMuted,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                texto,
+                style: TextStyle(
+                  color: seleccionada
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontWeight: seleccionada ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -755,7 +807,7 @@ class _PanelSeguimiento extends StatelessWidget {
                       : esPendiente
                           ? Icons.hourglass_top_rounded
                           : Icons.fact_check_outlined,
-                  color: Colors.black,
+                  color: AppColors.onAccent,
                 ),
               ),
               const SizedBox(width: 14),
@@ -866,7 +918,7 @@ class _CategoriaChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: seleccionado ? AppColors.accent : AppColors.textSecondary,
+            color: seleccionado ? AppColors.accentText : AppColors.textSecondary,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
@@ -913,7 +965,7 @@ class _UrgenciaChip extends StatelessWidget {
           children: [
             Icon(
               seleccionada ? Icons.check_circle : Icons.bolt_outlined,
-              color: seleccionada ? AppColors.accent : AppColors.textSecondary,
+              color: seleccionada ? AppColors.accentText : AppColors.textSecondary,
               size: 20,
             ),
             const SizedBox(height: 6),
@@ -921,7 +973,7 @@ class _UrgenciaChip extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: seleccionada ? AppColors.accent : AppColors.textSecondary,
+                color: seleccionada ? AppColors.accentText : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -959,7 +1011,7 @@ class _TipoChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: seleccionado
               ? AppColors.accent.withOpacity(0.15)
@@ -974,15 +1026,15 @@ class _TipoChip extends StatelessWidget {
           children: [
             Icon(
               seleccionado ? Icons.check_circle : icon,
-              color: seleccionado ? AppColors.accent : AppColors.textSecondary,
+              color: seleccionado ? AppColors.accentText : AppColors.textSecondary,
             ),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                color: seleccionado ? AppColors.accent : AppColors.textSecondary,
+                color: seleccionado ? AppColors.accentText : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
             const SizedBox(height: 2),
@@ -990,11 +1042,127 @@ class _TipoChip extends StatelessWidget {
               precio,
               style: const TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 10.5,
+                fontSize: 10,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Título de cada paso del formulario: número + título + una línea que
+/// explica qué se debe llenar.
+class _PasoTitulo extends StatelessWidget {
+  final int numero;
+  final String titulo;
+  final String ayuda;
+
+  const _PasoTitulo({
+    required this.numero,
+    required this.titulo,
+    required this.ayuda,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AppColors.accent,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            '$numero',
+            style: const TextStyle(
+              color: AppColors.onAccent,
+              fontWeight: FontWeight.w800,
+              fontSize: 12.5,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                ayuda,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Resumen de 3 pasos de cómo funciona el servicio, en una sola franja.
+class _ComoFunciona extends StatelessWidget {
+  const _ComoFunciona();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget paso(IconData icono, String texto) {
+      return Expanded(
+        child: Column(
+          children: [
+            Icon(icono, color: AppColors.accentText, size: 22),
+            const SizedBox(height: 4),
+            Text(
+              texto,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11.5,
+                height: 1.25,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    const flecha = Padding(
+      padding: EdgeInsets.only(bottom: 18),
+      child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          paso(Icons.edit_note, 'Llenas tu\nsolicitud'),
+          flecha,
+          paso(Icons.credit_card, 'Pagas\n(simulado)'),
+          flecha,
+          paso(Icons.directions_walk, 'Un colaborador\nva y te responde'),
+        ],
       ),
     );
   }

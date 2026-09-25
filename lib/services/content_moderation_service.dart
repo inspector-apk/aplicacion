@@ -53,6 +53,22 @@ class ContentModerationService {
         .any((palabra) => normalizado.contains(palabra));
   }
 
+  static final RegExp _sexualOViolento = RegExp(
+    r'\b(porno|pornograf|xxx|nsfw|desnud|erotic|prostitu|sexo explicit|'
+    r'acto sexual|relaciones sexuales|genitales|abuso sexual|'
+    r'explotacion sexual|violacion|violar|incesto|pedofil|pederast|'
+    r'decapit|descuartiz|desmembr|mutilad|tortur|masacr|asesinat|'
+    r'asesinar|degollar|apunal|acuchill|ahorcad|cadaver|gore|autolesion|'
+    r'suicid)',
+  );
+
+  /// Revisión rápida del texto que escribe un colaborador al responder:
+  /// contenido sexual explícito o violento. Es un aviso inmediato; la
+  /// verificación oficial (texto, imagen y video) la hace el servidor.
+  static bool respuestaContieneContenidoProhibido(String texto) {
+    return _sexualOViolento.hasMatch(_normalizar(texto));
+  }
+
   static String _normalizar(String texto) {
     var resultado = texto.toLowerCase();
     const conAcento = 'áàäâãéèëêíìïîóòöôõúùüûñ';

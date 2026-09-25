@@ -1,30 +1,66 @@
 import '../models/solicitud.dart';
 
-/// "Diccionario" de frases comunes para ayudar al cliente a describir su
-/// solicitud más rápido — organizadas por categoría porque lo que se
-/// suele pedir cambia bastante entre una solicitud personal, comercial
-/// o industrial. Son solo sugerencias: el cliente sigue pudiendo
-/// escribir lo que quiera, tocarlas solo llena o completa el campo.
-const Map<Categoria, List<String>> kSugerenciasDescripcion = {
+/// Una acción predefinida que el cliente puede pedirle al colaborador.
+/// El formulario de solicitud no tiene campos de texto libre: el cliente
+/// elige una de estas opciones, que ya están redactadas para que no se
+/// presten a malas interpretaciones.
+class OpcionSolicitud {
+  final String texto;
+
+  /// Tipos de contenido que el cliente debe haber elegido para que esta
+  /// opción tenga sentido (ej. "tomar una foto" solo aparece si pidió
+  /// imagen). Vacío = aplica siempre.
+  final Set<TipoSolicitud> requiere;
+
+  const OpcionSolicitud(this.texto, {this.requiere = const {}});
+}
+
+const Map<Categoria, List<OpcionSolicitud>> kOpcionesSolicitud = {
   Categoria.personal: [
-    'Confirmar si alguien se encuentra en la dirección',
-    'Tomar una foto del frente de la vivienda',
-    'Verificar el estado de un vehículo parqueado',
-    'Recoger o confirmar la entrega de un paquete',
-    'Verificar si una dirección existe y cómo se ve',
+    OpcionSolicitud('Confirmar si hay alguien en el lugar indicado'),
+    OpcionSolicitud('Verificar que el lugar indicado existe y cómo se ve'),
+    OpcionSolicitud('Confirmar que un paquete fue entregado en el lugar'),
+    OpcionSolicitud('Verificar el estado exterior de un vehículo parqueado'),
+    OpcionSolicitud('Tomar una foto del frente de la vivienda',
+        requiere: {TipoSolicitud.imagen}),
+    OpcionSolicitud('Grabar un video del entorno del lugar indicado',
+        requiere: {TipoSolicitud.video}),
+    OpcionSolicitud('Describir con una nota de voz lo que se ve en el lugar',
+        requiere: {TipoSolicitud.audio}),
   ],
   Categoria.comercial: [
-    'Verificar si el local está abierto en este momento',
-    'Tomar una foto de la vitrina o fachada del negocio',
-    'Confirmar el horario de atención en el lugar',
-    'Verificar el estado del inventario o exhibición',
-    'Comprobar si hay fila o disponibilidad en el sitio',
+    OpcionSolicitud('Verificar si el local está abierto ahora'),
+    OpcionSolicitud('Confirmar el horario de atención publicado en el local'),
+    OpcionSolicitud('Verificar cómo está el inventario o la exhibición'),
+    OpcionSolicitud('Comprobar si hay fila o disponibilidad de atención'),
+    OpcionSolicitud('Tomar una foto de la fachada o vitrina del negocio',
+        requiere: {TipoSolicitud.imagen}),
+    OpcionSolicitud('Grabar un video de la entrada o el interior del local',
+        requiere: {TipoSolicitud.video}),
+    OpcionSolicitud('Describir con una nota de voz lo que se ve en el local',
+        requiere: {TipoSolicitud.audio}),
   ],
   Categoria.industrial: [
-    'Verificar el estado de una bodega o planta',
-    'Tomar fotos de maquinaria o equipos en sitio',
-    'Confirmar la llegada de un cargamento o proveedor',
-    'Revisar condiciones de seguridad en la instalación',
-    'Documentar el estado de la infraestructura',
+    OpcionSolicitud('Verificar el estado exterior de una bodega o planta'),
+    OpcionSolicitud('Confirmar la llegada de un cargamento o proveedor'),
+    OpcionSolicitud(
+        'Revisar las condiciones de seguridad visibles en la instalación'),
+    OpcionSolicitud('Documentar el estado visible de la infraestructura'),
+    OpcionSolicitud('Tomar fotos de la maquinaria o equipos visibles',
+        requiere: {TipoSolicitud.imagen}),
+    OpcionSolicitud('Grabar un video del recorrido exterior de la instalación',
+        requiere: {TipoSolicitud.video}),
+    OpcionSolicitud(
+        'Describir con una nota de voz lo que se ve en la instalación',
+        requiere: {TipoSolicitud.audio}),
   ],
 };
+
+/// Opciones que aplican a la categoría y a los tipos de contenido que el
+/// cliente ya eligió.
+List<OpcionSolicitud> opcionesPara(
+    Categoria categoria, Set<TipoSolicitud> tipos) {
+  return (kOpcionesSolicitud[categoria] ?? const <OpcionSolicitud>[])
+      .where((o) => o.requiere.every(tipos.contains))
+      .toList();
+}

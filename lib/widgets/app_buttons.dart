@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 
-/// Botón principal: fondo dorado, texto negro. Para acciones primarias
+/// Botón principal: fondo azul corporativo, texto blanco. Para acciones primarias
 /// como ENTRAR o CREAR CUENTA.
 class PrimaryButton extends StatelessWidget {
   final String label;
@@ -26,7 +26,7 @@ class PrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accent,
           disabledBackgroundColor: AppColors.accent.withOpacity(0.35),
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.onAccent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -38,7 +38,7 @@ class PrimaryButton extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  color: Colors.black,
+                  color: AppColors.onAccent,
                 ),
               )
             : Text(

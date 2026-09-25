@@ -183,7 +183,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     _segundosParaReenviar > 0
                         ? 'Reenviar código (${_segundosParaReenviar}s)'
                         : 'Reenviar código',
-                    style: const TextStyle(color: AppColors.accent, fontSize: 13),
+                    style: const TextStyle(color: AppColors.accentText, fontSize: 13),
                   ),
                 ),
               ),

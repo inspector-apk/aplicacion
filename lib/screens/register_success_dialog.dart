@@ -20,7 +20,7 @@ Future<void> mostrarDialogoAliasCreado(BuildContext context, String alias) {
                 color: AppColors.accent,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, color: Colors.black, size: 32),
+              child: const Icon(Icons.check, color: AppColors.onAccent, size: 32),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -51,7 +51,7 @@ Future<void> mostrarDialogoAliasCreado(BuildContext context, String alias) {
                 alias,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppColors.accent,
+                  color: AppColors.accentText,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
@@ -66,7 +66,7 @@ Future<void> mostrarDialogoAliasCreado(BuildContext context, String alias) {
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.onAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

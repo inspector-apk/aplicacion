@@ -97,7 +97,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               _secreto,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppColors.accent,
+                color: AppColors.accentText,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,

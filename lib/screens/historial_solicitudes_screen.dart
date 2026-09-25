@@ -159,7 +159,7 @@ class _Badge extends StatelessWidget {
       child: Text(
         texto.toUpperCase(),
         style: const TextStyle(
-          color: AppColors.accent,
+          color: AppColors.accentText,
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
