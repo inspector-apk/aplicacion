@@ -9,6 +9,26 @@ const moderacion = require('./moderacion');
 const geocodificacion = require('./geocodificacion');
 
 const app = express();
+
+// Ambiente de pruebas en un PC: con SOLO_RED_LOCAL=1 se rechaza todo lo
+// que no venga de la misma máquina o de una IP privada de la red local
+// (10.x, 172.16-31.x, 192.168.x), aunque el firewall quedara abierto.
+function esIpLocal(ip) {
+  const v4 = (ip || '').replace(/^::ffff:/, '');
+  if (v4 === '::1' || v4.startsWith('fe80:')) return true;
+  const p = v4.split('.').map(Number);
+  if (p.length !== 4) return false;
+  return p[0] === 127 || p[0] === 10 ||
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+    (p[0] === 192 && p[1] === 168);
+}
+if (process.env.SOLO_RED_LOCAL === '1') {
+  app.use((req, res, next) => {
+    if (esIpLocal(req.socket.remoteAddress)) return next();
+    res.status(403).json({ ok: false, error: 'Solo disponible en la red local' });
+  });
+}
+
 app.use(cors());
 // Assets estáticos del panel de administrador (el logo de la app).
 app.use(express.static(path.join(__dirname, 'public')));
@@ -539,6 +559,7 @@ app.get('/api/salud', (req, res) => res.json({ ok: true }));
 
 app.listen(PUERTO, () => {
   console.log(`Backend de solicitudes de Inspector escuchando en el puerto ${PUERTO}`);
+  if (process.env.SOLO_RED_LOCAL === '1') console.log('Modo pruebas: solo acepta conexiones de la red local');
   console.log(moderacion.descripcionEstado());
   // Descarga/carga los modelos de imagen en segundo plano (la primera vez
   // baja ~250 MB); no bloquea el arranque.
