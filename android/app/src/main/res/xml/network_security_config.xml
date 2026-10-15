@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Release: HTTP sin cifrar solo hacia el backend de producción
+     (BackendConfig.baseUrl). Si el backend pasa a HTTPS, quitar la IP. -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">200.69.112.218</domain>
         <domain includeSubdomains="false">appinspector.servialco.com</domain>
     </domain-config>
 </network-security-config>

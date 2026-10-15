@@ -18,10 +18,9 @@ web/
 *.class
 .idea/
 
-# Mantenemos el APK ya compilado versionado; solo ignoramos el resto
-# de artefactos de build de Flutter si algún día existieran aquí.
-build/*
-!build/Inspector.apk
+# Artefactos de build, incluido el APK: no se versiona porque lleva
+# dentro la API key de producción y el repo es público.
+build/
 
 # Backend: nunca versionar secretos, dependencias ni la base de datos local.
 backend/.env

@@ -28,10 +28,11 @@ sección "Compilar para iOS" trae los pasos exactos.
 
 ## APK ya compilado
 
-`build/Inspector.apk` (~50 MB) es el APK de release ya compilado y listo
-para instalar en un dispositivo Android (`adb install build\Inspector.apk`
-o copiándolo al teléfono). Se generó con Flutter 3.47.0 stable e incluye
-el ícono propio de Inspector (ver "Ícono de la app" más abajo).
+El APK de release **no se guarda en este repositorio**: lleva dentro la
+API key de producción (inyectada con `--dart-define`) y el repo es
+público, así que cualquiera podría extraerla. Pídeselo al equipo o
+compílalo tú (ver "Cómo compilar el APK"); se instala con
+`adb install app-release.apk` o copiándolo al teléfono.
 
 ## Qué incluye este repositorio
 
