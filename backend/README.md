@@ -86,14 +86,85 @@ falta que el backend esté corriendo con el código nuevo.
 
 ## 7. Conectar la app Flutter
 
-Edita `lib/core/backend_config.dart`:
+La URL y la clave se pasan al compilar (no se editan en el código, el
+repo es público). La URL por defecto está en
+`lib/core/backend_config.dart`; la clave es la misma `API_KEY` del `.env`:
 
-```dart
-static const String baseUrl = 'https://appinspector.servialco.com'; // o la URL que uses
-static const String apiKey = 'la-misma-clave-que-pusiste-en-.env';
+```powershell
+flutter build apk --release --dart-define=INSPECTOR_API_URL=https://appinspector.servialco.com --dart-define=INSPECTOR_API_KEY=la-misma-clave-que-pusiste-en-.env
 ```
 
-Vuelve a compilar el APK/IPA para que tome estos valores.
+## Ambiente de pruebas local
+
+Copia completa del sistema en tu propio PC, con su propia base de datos
+(`solicitudes_pruebas.db`) y su propia clave: nunca toca producción y
+solo acepta conexiones de la red local. Cada persona que lo levanta
+tiene su ambiente independiente (no comparte datos con el de otros).
+
+Requisitos: Node.js 18+, Flutter, y Android Studio o el Android SDK con
+un emulador.
+
+1. Configura y arranca el backend de pruebas (en esta carpeta):
+
+   ```powershell
+   npm install
+   Copy-Item .env.pruebas.example .env.pruebas
+   ```
+
+   Abre `.env.pruebas` y cambia `API_KEY` por una clave tuya. Para
+   generar una:
+
+   ```powershell
+   node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+   ```
+
+   Luego:
+
+   ```powershell
+   npm run pruebas
+   ```
+
+   Comprueba que responde en `http://localhost:3100/api/salud`
+   (`{"ok":true}`). La consola debe decir "Modo pruebas: solo acepta
+   conexiones de la red local".
+
+2. Corre la app contra ese backend, desde la raíz del proyecto, con la
+   misma clave de tu `.env.pruebas`:
+
+   ```powershell
+   flutter pub get
+   flutter run --dart-define=INSPECTOR_API_URL=http://10.0.2.2:3100 --dart-define=INSPECTOR_API_KEY=<tu-clave-de-pruebas>
+   ```
+
+   `10.0.2.2` es como el emulador de Android ve a tu PC. Las builds
+   debug permiten HTTP sin cifrar hacia él
+   (`android/app/src/debug/res/xml/network_security_config.xml`); las
+   de release no.
+
+3. (Opcional) Para que otros PCs o celulares de tu red usen tu
+   ambiente, abre el puerto solo para la red local (PowerShell como
+   administrador):
+
+   ```powershell
+   New-NetFirewallRule -DisplayName "Inspector pruebas (red local)" -Direction Inbound -Protocol TCP -LocalPort 3100 -RemoteAddress LocalSubnet -Profile Any -Action Allow
+   ```
+
+   y compila el APK con la IP de tu PC en vez de `10.0.2.2`
+   (`ipconfig` → "Dirección IPv4"):
+
+   ```powershell
+   flutter build apk --debug --dart-define=INSPECTOR_API_URL=http://<IP-de-tu-PC>:3100 --dart-define=INSPECTOR_API_KEY=<tu-clave-de-pruebas>
+   ```
+
+La base de pruebas empieza vacía. La cuenta de administrador
+(`admin@inspector.com`) la crea la app al primer arranque; el panel
+web queda en `http://localhost:3100`.
+
+Si en Windows `flutter` falla con "Una directiva de Control de
+aplicaciones bloqueó este archivo", lo bloquea Smart App Control
+(`dartvm.exe` no está firmado): desactívalo en Seguridad de Windows →
+Control de aplicaciones y navegador → Control Inteligente de
+Aplicaciones.
 
 ## Panel de administrador para PC
 

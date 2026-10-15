@@ -36,12 +36,10 @@ el ícono propio de Inspector (ver "Ícono de la app" más abajo).
 ## Qué incluye este repositorio
 
 Este repositorio contiene el **código fuente de la app** (carpeta `lib/`,
-`pubspec.yaml`, `analysis_options.yaml`) y el APK ya compilado. No incluye
-las carpetas nativas `android/`, `ios/`, etc., porque esas se generan
-automáticamente con el comando `flutter create` y dependen de la versión
-de Flutter instalada en tu máquina — generarlas a mano suele causar
-problemas de compatibilidad de Gradle/Kotlin. Los pasos de abajo las
-generan por ti en segundos si necesitas recompilar.
+`pubspec.yaml`, `analysis_options.yaml`), la carpeta nativa `android/`
+ya configurada, el backend (`backend/`) y el APK ya compilado. La carpeta
+`ios/` no se incluye: se genera con `flutter create` en macOS (ver
+"Compilar para iOS").
 
 ## Pantallas implementadas
 
@@ -447,107 +445,50 @@ flutter doctor
 
 ## Cómo compilar el APK
 
-1. Genera la carpeta nueva del proyecto con el scaffolding nativo,
-   **limitado a Android e iOS** (`--platforms=android,ios`): algunos
-   paquetes (`geolocator`, en concreto su variante de Windows) traen
-   implementaciones de escritorio que en Windows exigen tener el "Modo
-   desarrollador" activado (symlinks) si el proyecto incluye las
-   carpetas `windows/`/`linux`/`macos`. Como esta app no los necesita,
-   evita el problema por completo generando solo lo que hace falta:
+La carpeta `android/` viene en el repositorio con todo lo nativo ya
+configurado: permisos de ubicación, internet, cámara y micrófono
+(`android/app/src/main/AndroidManifest.xml`), bloqueo de capturas de
+pantalla con `FLAG_SECURE` (`MainActivity.kt`), íconos y configuración
+de red. No hace falta `flutter create` ni copiar archivos.
+
+1. Instala las dependencias:
 
    ```powershell
-   flutter create --platforms=android,ios --org com.inspector --project-name inspector inspector_app
-   ```
-
-2. Copia el contenido de este repositorio (`lib/`, `pubspec.yaml`,
-   `analysis_options.yaml`, `assets/`) dentro de `inspector_app/`,
-   reemplazando los archivos generados por defecto:
-
-   ```powershell
-   Copy-Item -Recurse -Force .\lib\* .\inspector_app\lib\
-   Copy-Item -Force .\pubspec.yaml .\inspector_app\pubspec.yaml
-   Copy-Item -Force .\analysis_options.yaml .\inspector_app\analysis_options.yaml
-   Copy-Item -Recurse -Force .\assets .\inspector_app\assets
-   ```
-
-3. Instala las dependencias:
-
-   ```powershell
-   cd inspector_app
    flutter pub get
    ```
 
-4. **Agrega los permisos de ubicación, internet, cámara y micrófono**
-   en `android/app/src/main/AndroidManifest.xml` — no vienen en el
-   `flutter create` por defecto, hay que añadirlos a mano justo debajo
-   de la etiqueta `<manifest ...>` de apertura:
-
-   ```xml
-   <uses-permission android:name="android.permission.INTERNET"/>
-   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-   <uses-permission android:name="android.permission.CAMERA"/>
-   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-   ```
-
-   La cámara la usa `image_picker` para que el Colaborador pueda tomar
-   fotos y videos al responder una solicitud; el micrófono lo usa
-   `record` para las notas de audio (y también hace falta para grabar
-   video con sonido).
-
-5. **Bloquea capturas y grabación de pantalla** en
-   `android/app/src/main/kotlin/com/inspector/inspector/MainActivity.kt`
-   — tampoco viene por defecto, reemplaza todo el archivo por:
-
-   ```kotlin
-   package com.inspector.inspector
-
-   import android.os.Bundle
-   import android.view.WindowManager
-   import io.flutter.embedding.android.FlutterActivity
-
-   class MainActivity : FlutterActivity() {
-       override fun onCreate(savedInstanceState: Bundle?) {
-           window.setFlags(
-               WindowManager.LayoutParams.FLAG_SECURE,
-               WindowManager.LayoutParams.FLAG_SECURE
-           )
-           super.onCreate(savedInstanceState)
-       }
-   }
-   ```
-
-   Con `FLAG_SECURE`, Android bloquea por completo capturas y grabación
-   de pantalla en cualquier parte de la app (y la oculta, en negro, del
-   selector de apps recientes) — protege el contenido sensible (fotos,
-   audio, video, respuestas de un solo vistazo). **En iOS esto no es
-   posible**: Apple no permite a ninguna app bloquear la captura de
-   pantalla del sistema; lo único viable ahí es *detectar* cuando
-   ocurre y avisar (ver la sección de iOS más abajo).
-
-6. Genera el ícono de la app (launcher / Descargas) a partir de
-   `assets/icon/app_icon.png` — este paso escribe los mipmaps de Android
-   (y los assets de iOS) y solo hace falta repetirlo si cambias la
-   imagen del ícono:
+2. (Opcional) Prueba la app en un emulador o dispositivo conectado:
 
    ```powershell
-   dart run flutter_launcher_icons
+   flutter run --dart-define=INSPECTOR_API_KEY=<clave-de-produccion>
    ```
 
-7. (Opcional) Prueba la app en un emulador o dispositivo conectado:
+   Para probar contra un backend de pruebas en tu propio PC, ver
+   "Ambiente de pruebas local" en [backend/README.md](backend/README.md).
+
+3. Genera el APK de release:
 
    ```powershell
-   flutter run
-   ```
-
-8. Genera el APK de release:
-
-   ```powershell
-   flutter build apk --release
+   flutter build apk --release --dart-define=INSPECTOR_API_KEY=<clave-de-produccion>
    ```
 
    El archivo resultante queda en:
-   `inspector_app/build/app/outputs/flutter-apk/app-release.apk`
+   `build/app/outputs/flutter-apk/app-release.apk`
+
+Sobre `FLAG_SECURE`: Android bloquea por completo capturas y grabación
+de pantalla en cualquier parte de la app (y la oculta, en negro, del
+selector de apps recientes) — protege el contenido sensible (fotos,
+audio, video, respuestas de un solo vistazo). **En iOS esto no es
+posible**: Apple no permite a ninguna app bloquear la captura de
+pantalla del sistema; lo único viable ahí es *detectar* cuando
+ocurre y avisar (ver la sección de iOS más abajo).
+
+Si cambias la imagen del ícono (`assets/icon/app_icon.png`), regenera
+los mipmaps de Android (y los assets de iOS) con:
+
+```powershell
+dart run flutter_launcher_icons
+```
 
 ## Compilar para iOS (requiere macOS)
 
@@ -570,12 +511,15 @@ Pasos una vez tengas acceso a macOS:
 
 1. Instala [Xcode](https://apps.apple.com/app/xcode/id497799835) (App
    Store) y [Flutter](https://docs.flutter.dev/get-started/install/macos).
-2. Repite los pasos 1–3 de la sección anterior (`flutter create`, copiar
-   `lib/`/`pubspec.yaml`, `flutter pub get`), pero en macOS. Esto genera
-   también la carpeta `ios/`.
+2. Genera la carpeta `ios/` e instala las dependencias:
+
+   ```bash
+   flutter create --platforms=ios --org com.inspector --project-name inspector .
+   flutter pub get
+   ```
 3. Agrega los permisos de ubicación, cámara y fotos en
-   `ios/Runner/Info.plist`, dentro del `<dict>` principal (igual que el
-   paso 4 de Android, pero para iOS):
+   `ios/Runner/Info.plist`, dentro del `<dict>` principal (el equivalente en iOS
+   a los permisos de `AndroidManifest.xml`):
 
    ```xml
    <key>NSLocationWhenInUseUsageDescription</key>

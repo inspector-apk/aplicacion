@@ -4,7 +4,11 @@
 .packages
 .pub-cache/
 .pub/
-android/
+# android/ se versiona (permisos, íconos, config de red); sus archivos
+# locales y generados los excluye android/.gitignore.
+android/build/
+android/app/build/
+android/.kotlin/
 ios/
 linux/
 macos/
@@ -27,3 +31,6 @@ backend/*.db-shm
 backend/*.db-wal
 
 backend/modelos_ia/
+
+# Ambiente de pruebas local (tiene la clave de pruebas).
+backend/.env.pruebas

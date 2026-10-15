@@ -12,7 +12,14 @@
 class BackendConfig {
   BackendConfig._();
 
-  static const String baseUrl = 'http://200.69.112.218:12443';
+  /// Por defecto apunta al backend de producción. Para el ambiente de
+  /// pruebas en tu PC compila con
+  /// `--dart-define=INSPECTOR_API_URL=http://<IP-de-tu-PC>:3100`
+  /// (o `http://10.0.2.2:3100` desde el emulador de Android).
+  static const String baseUrl = String.fromEnvironment(
+    'INSPECTOR_API_URL',
+    defaultValue: 'http://200.69.112.218:12443',
+  );
 
   /// Se inyecta en tiempo de compilación con
   /// `--dart-define=INSPECTOR_API_KEY=...` para no dejar la clave real

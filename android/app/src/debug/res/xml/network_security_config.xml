@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo builds debug: permite HTTP sin cifrar hacia el backend de
+     pruebas en el PC (IP de la red local). Release usa el de src/main. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -4,7 +4,8 @@
   "description": "Backend compartido de solicitudes para la app Inspector (Cliente pide, Colaborador atiende)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "pruebas": "node --env-file=.env.pruebas server.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
